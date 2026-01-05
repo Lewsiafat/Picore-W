@@ -2,8 +2,8 @@ import uasyncio as asyncio
 from wifi_manager import WiFiManager
 
 # Configuration (Replace with actual credentials for testing)
-SSID = "YOUR_WIFI_SSID"
-PASSWORD = "YOUR_WIFI_PASSWORD"
+SSID = "Lewsi"
+PASSWORD = "ab322060"
 
 async def blink_led():
     """
@@ -16,17 +16,17 @@ async def blink_led():
 
 async def main():
     print("--- Picore-W System Start (Async) ---")
-    
+
     # Initialize WiFiManager (starts its own background task)
     wm = WiFiManager()
-    
+
     # Start a dummy user task
     asyncio.create_task(blink_led())
-    
+
     # Trigger connection
     print(f"Main: Requesting connection to {SSID}")
     wm.connect(SSID, PASSWORD)
-    
+
     # Main loop just to keep the script alive and monitor status
     while True:
         if wm.is_connected():

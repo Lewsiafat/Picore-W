@@ -9,6 +9,8 @@
 - **Resilience Over Features**: Prioritize the stability of the network state machine. Every possible network state (including edge cases) must be handled gracefully.
 - **Maintainable & Extensible**: Write modular code that can be easily understood and integrated into other projects without significant refactoring.
 - **Hardware-Aware**: Design specifically for the RP2350 / Pico 2 W, respecting its memory and power constraints while leveraging its capabilities.
+- **Put the code into src folder**: All source code should be placed in the `src` directory to maintain organization and clarity.
+- **No testing should be included**: Testing code should be kept separate from the main source code to ensure a clean production environment.
 
 ## Communication & Feedback
 - **Implicit Feedback**: Use status codes or clear state transitions within the code to communicate with the consuming application.
