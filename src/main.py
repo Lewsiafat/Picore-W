@@ -3,8 +3,8 @@ from wifi_manager import WiFiManager, STATE_IDLE, STATE_CONNECTED
 
 # Configuration (Replace with actual credentials for testing)
 # In a real scenario, these would come from a Web UI or Mobile App
-TEST_SSID = "YOUR_WIFI_SSID"
-TEST_PASSWORD = "YOUR_WIFI_PASSWORD"
+TEST_SSID = "Lewsi"
+TEST_PASSWORD = "ab322060"
 
 async def blink_led():
     """
@@ -16,20 +16,20 @@ async def blink_led():
 
 async def main():
     print("--- Picore-W System Start (Async + Config) ---")
-    
+
     # Initialize WiFiManager (starts background task and loads config)
     wm = WiFiManager()
-    
+
     # Start user task
     asyncio.create_task(blink_led())
-    
+
     # Give it a moment to try auto-connect
     print("Main: Waiting for auto-connect...")
     await asyncio.sleep(5)
-    
+
     if wm.get_status() == STATE_IDLE:
         print("Main: No saved config or auto-connect failed. Starting Provisioning...")
-        
+
         # Simulate receiving credentials (e.g., from user input or AP mode)
         # For testing purposes, we use the hardcoded values here ONCE.
         if TEST_SSID != "YOUR_WIFI_SSID":
@@ -37,7 +37,7 @@ async def main():
             wm.connect(TEST_SSID, TEST_PASSWORD)
         else:
             print("Main: No test credentials provided in code. Waiting for user action...")
-    
+
     # Main loop
     while True:
         if wm.is_connected():
