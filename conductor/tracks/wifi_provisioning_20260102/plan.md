@@ -6,10 +6,10 @@
 - [x] Task: Implement auto-reconnection logic and error handling (83c1103)
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Core Connectivity' (Protocol in workflow.md)
 
-## Phase 2: Configuration & Persistence
+## Phase 2: Configuration & Persistence [checkpoint: bba649a]
 - [x] Task: Implement a simple flash-based storage for WiFi credentials (SSID/Password) (7d29f42)
 - [x] Task: Integrate storage with the State Machine (load on boot) (1807721)
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Configuration' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Configuration' (Protocol in workflow.md)
 
 ## Phase 3: AP Mode & Web Provisioning
 - [ ] Task: Implement AP mode activation when credentials are missing
