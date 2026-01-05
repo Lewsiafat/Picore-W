@@ -14,7 +14,7 @@
 ## Phase 3: AP Mode & Web Provisioning
 - [x] Task: Implement AP mode activation when credentials are missing (3c78bba)
 - [x] Task: Build a lightweight async Web Server and Captive Portal logic (36a69f0)
-- [ ] Task: Create the HTML/CSS provisioning page and credential save logic
+- [x] Task: Create the HTML/CSS provisioning page and credential save logic (f7a1990)
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: AP Mode & Web Provisioning' (Protocol in workflow.md)
 
 ## Phase 4: Integration & Polish
