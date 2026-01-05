@@ -1,6 +1,7 @@
 import network
 import uasyncio as asyncio
 import time
+from config_manager import ConfigManager
 
 # --- Configuration Constants ---
 class WiFiConfig:
@@ -49,6 +50,10 @@ class WiFiManager:
         Monitors state and transitions accordingly.
         """
         print("WiFiManager: State Machine Started")
+        
+        # Attempt to load config on startup
+        self._load_and_connect()
+        
         while True:
             try:
                 if self._state == STATE_IDLE:
@@ -70,6 +75,18 @@ class WiFiManager:
             # Yield to other tasks
             await asyncio.sleep(0.1)
 
+    def _load_and_connect(self):
+        """
+        Internal helper to load config and trigger connection if available.
+        """
+        print("WiFiManager: Checking for saved credentials...")
+        config = ConfigManager.load_config()
+        if config and "ssid" in config and "password" in config:
+            print(f"WiFiManager: Found saved config for '{config['ssid']}'. Connecting...")
+            self.connect(config["ssid"], config["password"])
+        else:
+            print("WiFiManager: No saved config found. Staying in IDLE.")
+
     async def _handle_connecting(self):
         print(f"WiFiManager: Connecting to {self._target_ssid} (Attempt {self._retry_count + 1}/{WiFiConfig.MAX_RETRIES})...")
         
@@ -86,8 +103,7 @@ class WiFiManager:
                 return
             
             status = self.wlan.status()
-            # If explicit failure detected, break early (don't wait full timeout)
-            # Note: STAT_WRONG_PASSWORD might be tricky on some firmwares, but trying to catch it.
+            # If explicit failure detected, break early
             if status == network.STAT_CONNECT_FAIL or status == network.STAT_NO_AP_FOUND or status == network.STAT_WRONG_PASSWORD:
                 print(f"WiFiManager: Connection Failed explicitly (Status: {status})")
                 break
@@ -124,7 +140,6 @@ class WiFiManager:
         print(f"WiFiManager: In FAIL state. Waiting {WiFiConfig.FAIL_RECOVERY_DELAY}s before auto-recovery...")
         
         # Wait for recovery delay
-        # We check repeatedly to allow manual override (e.g. user calls connect() with new creds)
         for _ in range(WiFiConfig.FAIL_RECOVERY_DELAY):
             if self._state != STATE_FAIL:
                 return # State changed externally (e.g. by connect())
@@ -137,11 +152,15 @@ class WiFiManager:
     def connect(self, ssid, password):
         """
         Public API to request a connection.
+        Also saves the configuration for future boots.
         """
         self._target_ssid = ssid
         self._target_password = password
         self._retry_count = 0
         self._state = STATE_CONNECTING
+        
+        # Save new credentials
+        ConfigManager.save_config(ssid, password)
 
     def disconnect(self):
         """Disconnect from the current network."""
