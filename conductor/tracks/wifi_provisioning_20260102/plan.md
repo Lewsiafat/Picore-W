@@ -1,7 +1,7 @@
 # Plan: WiFi State Machine & Provisioning
 
 ## Phase 1: Core Connectivity & State Management
-- [ ] Task: Implement basic WiFi connection logic using `network` module
+- [x] Task: Implement basic WiFi connection logic using `network` module (e69f821)
 - [ ] Task: Create the asynchronous State Machine structure with `uasyncio`
 - [ ] Task: Implement auto-reconnection logic and error handling
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Core Connectivity' (Protocol in workflow.md)
