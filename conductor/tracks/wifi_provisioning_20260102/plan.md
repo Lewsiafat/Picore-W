@@ -7,7 +7,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Core Connectivity' (Protocol in workflow.md)
 
 ## Phase 2: Configuration & Persistence
-- [ ] Task: Implement a simple flash-based storage for WiFi credentials (SSID/Password)
+- [x] Task: Implement a simple flash-based storage for WiFi credentials (SSID/Password) (7d29f42)
 - [ ] Task: Integrate storage with the State Machine (load on boot)
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Configuration' (Protocol in workflow.md)
 
