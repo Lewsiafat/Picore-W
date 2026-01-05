@@ -19,12 +19,18 @@ class WiFiConfig:
     
     # Interval (seconds) to check connection health in CONNECTED state
     HEALTH_CHECK_INTERVAL = 2
+    
+    # AP Mode Settings
+    AP_SSID = "Picore-W-Setup"
+    AP_PASSWORD = "" # Open network for ease of setup
+    AP_IP = "192.168.4.1"
 
 # --- State Constants ---
 STATE_IDLE = 0
 STATE_CONNECTING = 1
 STATE_CONNECTED = 2
 STATE_FAIL = 3
+STATE_AP_MODE = 4
 
 class WiFiManager:
     """
@@ -32,8 +38,13 @@ class WiFiManager:
     Implements an asynchronous State Machine to handle connection in the background.
     """
     def __init__(self):
+        # Station Interface
         self.wlan = network.WLAN(network.STA_IF)
         self.wlan.active(True)
+        
+        # AP Interface
+        self.ap = network.WLAN(network.AP_IF)
+        self.ap.active(False) # Default to off
         
         # State Machine variables
         self._state = STATE_IDLE
@@ -68,6 +79,9 @@ class WiFiManager:
                 elif self._state == STATE_FAIL:
                     await self._handle_fail()
                     
+                elif self._state == STATE_AP_MODE:
+                    await self._handle_ap_mode()
+                    
             except Exception as e:
                 print(f"WiFiManager: Critical Error in State Machine: {e}")
                 await asyncio.sleep(5)
@@ -78,6 +92,7 @@ class WiFiManager:
     def _load_and_connect(self):
         """
         Internal helper to load config and trigger connection if available.
+        If no config, switch to AP Mode.
         """
         print("WiFiManager: Checking for saved credentials...")
         config = ConfigManager.load_config()
@@ -85,9 +100,15 @@ class WiFiManager:
             print(f"WiFiManager: Found saved config for '{config['ssid']}'. Connecting...")
             self.connect(config["ssid"], config["password"])
         else:
-            print("WiFiManager: No saved config found. Staying in IDLE.")
+            print("WiFiManager: No saved config found. Switching to AP Mode.")
+            self._state = STATE_AP_MODE
 
     async def _handle_connecting(self):
+        # Ensure AP is off when trying to connect as Station
+        if self.ap.active():
+            print("WiFiManager: Disabling AP Mode for Station connection...")
+            self.ap.active(False)
+
         print(f"WiFiManager: Connecting to {self._target_ssid} (Attempt {self._retry_count + 1}/{WiFiConfig.MAX_RETRIES})...")
         
         # Trigger connection
@@ -103,7 +124,6 @@ class WiFiManager:
                 return
             
             status = self.wlan.status()
-            # If explicit failure detected, break early
             if status == network.STAT_CONNECT_FAIL or status == network.STAT_NO_AP_FOUND or status == network.STAT_WRONG_PASSWORD:
                 print(f"WiFiManager: Connection Failed explicitly (Status: {status})")
                 break
@@ -120,7 +140,6 @@ class WiFiManager:
             print(f"WiFiManager: Retrying in {WiFiConfig.RETRY_DELAY}s...")
             self.wlan.disconnect() # Reset interface
             await asyncio.sleep(WiFiConfig.RETRY_DELAY)
-            # Stay in CONNECTING state to loop again
 
     async def _handle_connected(self):
         # Monitor connection health
@@ -135,39 +154,60 @@ class WiFiManager:
     async def _handle_fail(self):
         """
         Handle the FAIL state. 
-        Wait for a cooldown period then try to auto-recover (go back to CONNECTING).
+        For now, we still try auto-recovery. 
+        (Future: Could switch to AP Mode here too if desired)
         """
         print(f"WiFiManager: In FAIL state. Waiting {WiFiConfig.FAIL_RECOVERY_DELAY}s before auto-recovery...")
         
         # Wait for recovery delay
         for _ in range(WiFiConfig.FAIL_RECOVERY_DELAY):
             if self._state != STATE_FAIL:
-                return # State changed externally (e.g. by connect())
+                return 
             await asyncio.sleep(1)
             
         print("WiFiManager: Attempting Auto-Recovery...")
         self._retry_count = 0
         self._state = STATE_CONNECTING
 
+    async def _handle_ap_mode(self):
+        """
+        Handle AP Mode.
+        Keeps AP active and waits for user configuration (via Web Server).
+        """
+        if not self.ap.active():
+            print(f"WiFiManager: Enabling AP Mode (SSID: {WiFiConfig.AP_SSID})...")
+            try:
+                # Configure AP
+                # Note: 'security=0' means open network.
+                self.ap.config(essid=WiFiConfig.AP_SSID, password=WiFiConfig.AP_PASSWORD)
+                self.ap.ifconfig((WiFiConfig.AP_IP, '255.255.255.0', WiFiConfig.AP_IP, '8.8.8.8'))
+                
+                self.ap.active(True)
+                print(f"WiFiManager: AP Mode Started. IP: {self.ap.ifconfig()[0]}")
+            except Exception as e:
+                print(f"WiFiManager: Error starting AP Mode: {e}")
+        
+        # AP Mode loop - just wait for credentials to be provided via connect()
+        # The web server (to be implemented) will call connect() when user submits form.
+        await asyncio.sleep(2)
+
     def connect(self, ssid, password):
         """
         Public API to request a connection.
-        Also saves the configuration for future boots.
         """
         self._target_ssid = ssid
         self._target_password = password
         self._retry_count = 0
         self._state = STATE_CONNECTING
         
-        # Save new credentials
         ConfigManager.save_config(ssid, password)
 
     def disconnect(self):
-        """Disconnect from the current network."""
         if self.wlan.isconnected():
             self.wlan.disconnect()
         self._state = STATE_IDLE
         self._retry_count = 0
+        self.ap.active(False)
 
     def is_connected(self):
         return self._state == STATE_CONNECTED

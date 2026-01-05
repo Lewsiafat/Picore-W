@@ -1,49 +1,49 @@
 import uasyncio as asyncio
-from wifi_manager import WiFiManager, STATE_IDLE, STATE_CONNECTED
-
-# Configuration (Replace with actual credentials for testing)
-# In a real scenario, these would come from a Web UI or Mobile App
-TEST_SSID = "Lewsi"
-TEST_PASSWORD = "ab322060"
+from wifi_manager import WiFiManager, STATE_IDLE, STATE_CONNECTING, STATE_CONNECTED, STATE_FAIL, STATE_AP_MODE
 
 async def blink_led():
     """
     Simulates a user application task.
     """
     while True:
-        # print("Main: User App Running (Blink)...") # Reduce noise
         await asyncio.sleep(2)
 
+async def monitor_status(wm):
+    """
+    Periodically prints the system status.
+    """
+    last_state = -1
+    while True:
+        current_state = wm.get_status()
+        if current_state != last_state:
+            state_name = "UNKNOWN"
+            if current_state == STATE_IDLE: state_name = "IDLE"
+            elif current_state == STATE_CONNECTING: state_name = "CONNECTING"
+            elif current_state == STATE_CONNECTED: state_name = "CONNECTED (Station)"
+            elif current_state == STATE_FAIL: state_name = "FAIL"
+            elif current_state == STATE_AP_MODE: state_name = "AP MODE (Provisioning)"
+            
+            print(f"Main: System State Changed to -> {state_name}")
+            last_state = current_state
+            
+            if current_state == STATE_AP_MODE:
+                print("Main: Please connect to WiFi 'Picore-W-Setup' to configure device.")
+            
+        await asyncio.sleep(1)
+
 async def main():
-    print("--- Picore-W System Start (Async + Config) ---")
-
-    # Initialize WiFiManager (starts background task and loads config)
+    print("--- Picore-W System Start (Phase 3: AP Mode) ---")
+    
+    # Initialize WiFiManager
     wm = WiFiManager()
-
-    # Start user task
+    
+    # Start tasks
     asyncio.create_task(blink_led())
-
-    # Give it a moment to try auto-connect
-    print("Main: Waiting for auto-connect...")
-    await asyncio.sleep(5)
-
-    if wm.get_status() == STATE_IDLE:
-        print("Main: No saved config or auto-connect failed. Starting Provisioning...")
-
-        # Simulate receiving credentials (e.g., from user input or AP mode)
-        # For testing purposes, we use the hardcoded values here ONCE.
-        if TEST_SSID != "YOUR_WIFI_SSID":
-            print(f"Main: Provisioning with test credentials: {TEST_SSID}")
-            wm.connect(TEST_SSID, TEST_PASSWORD)
-        else:
-            print("Main: No test credentials provided in code. Waiting for user action...")
-
+    asyncio.create_task(monitor_status(wm))
+    
     # Main loop
     while True:
-        if wm.is_connected():
-            # System is online
-            pass
-        await asyncio.sleep(5)
+        await asyncio.sleep(10)
 
 if __name__ == "__main__":
     try:
