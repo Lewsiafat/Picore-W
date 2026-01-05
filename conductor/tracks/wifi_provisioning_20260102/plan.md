@@ -12,7 +12,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Configuration' (Protocol in workflow.md)
 
 ## Phase 3: AP Mode & Web Provisioning
-- [ ] Task: Implement AP mode activation when credentials are missing
+- [x] Task: Implement AP mode activation when credentials are missing (3c78bba)
 - [ ] Task: Build a lightweight async Web Server and Captive Portal logic
 - [ ] Task: Create the HTML/CSS provisioning page and credential save logic
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: AP Mode & Web Provisioning' (Protocol in workflow.md)
