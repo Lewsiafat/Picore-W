@@ -15,7 +15,7 @@ class WiFiConfig:
     
     # AP Mode Settings
     AP_SSID = "Picore-W-Setup"
-    AP_PASSWORD = ""
+    AP_PASSWORD = "password123" # Default secure password
     AP_IP = "192.168.4.1"
 
 # --- State Constants ---
@@ -24,6 +24,63 @@ STATE_CONNECTING = 1
 STATE_CONNECTED = 2
 STATE_FAIL = 3
 STATE_AP_MODE = 4
+
+# --- HTML Template ---
+PROVISIONING_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Picore-W Setup</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 320px; }
+        h1 { text-align: center; color: #1a73e8; margin-bottom: 1.5rem; font-size: 1.5rem; }
+        form { display: flex; flex-direction: column; gap: 1rem; }
+        input { padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+        button { background: #1a73e8; color: white; border: none; padding: 0.75rem; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #1557b0; }
+        .note { font-size: 0.8rem; color: #666; text-align: center; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Picore-W Setup</h1>
+        <form action="/configure" method="POST">
+            <input type="text" name="ssid" placeholder="WiFi Name (SSID)" required>
+            <input type="password" name="password" placeholder="WiFi Password" required>
+            <button type="submit">Connect</button>
+        </form>
+        <div class="note">Enter your WiFi credentials to connect the device.</div>
+    </div>
+</body>
+</html>
+""
+
+SUCCESS_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Connecting...</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
+        .container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #34a853; }
+    </style>
+    <script>
+        setTimeout(function() { window.close(); }, 5000);
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Settings Saved!</h1>
+        <p>The device is attempting to connect to the WiFi network.</p>
+        <p>Please check the device status LED or reconnect your phone to your normal WiFi.</p>
+    </div>
+</body>
+</html>
+""
 
 class WiFiManager:
     def __init__(self):
@@ -51,13 +108,33 @@ class WiFiManager:
 
     def _setup_routes(self):
         """Register Web Server routes."""
-        # Simple test route
         self.web_server.add_route("/", self._handle_root_request)
         self.web_server.add_route("/hotspot-detect.html", self._handle_root_request) # Apple
-        self.web_server.add_route("/generate_204", self._handle_root_request) # Android (simplified)
+        self.web_server.add_route("/generate_204", self._handle_root_request) # Android
+        self.web_server.add_route("/configure", self._handle_configure, method="POST")
 
     async def _handle_root_request(self, request):
-        return b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<h1>Picore-W Setup</h1><p>Provisioning page coming soon...</p>"
+        return ("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + PROVISIONING_HTML).encode()
+
+    async def _handle_configure(self, request):
+        """Handle form submission."""
+        params = request.get("params", {})
+        ssid = params.get("ssid")
+        password = params.get("password")
+        
+        if ssid:
+            print(f"WiFiManager: Received configuration for SSID: {ssid}")
+            # We schedule the connection, but we must return the HTTP response first.
+            # Using asyncio.create_task to delay the switch slightly allows the response to go out.
+            asyncio.create_task(self._delayed_connect(ssid, password))
+            return ("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + SUCCESS_HTML).encode()
+        else:
+            return b"HTTP/1.1 400 Bad Request\r\n\r\nMissing SSID"
+
+    async def _delayed_connect(self, ssid, password):
+        """Wait a bit for the response to be sent, then trigger connection."""
+        await asyncio.sleep(1)
+        self.connect(ssid, password)
 
     async def _run_state_machine(self):
         print("WiFiManager: State Machine Started")
@@ -90,7 +167,7 @@ class WiFiManager:
             self._state = STATE_AP_MODE
 
     async def _handle_connecting(self):
-        self._stop_ap_services() # Ensure AP/Services are off
+        self._stop_ap_services() 
         
         print(f"WiFiManager: Connecting to {self._target_ssid} (Attempt {self._retry_count + 1}/{WiFiConfig.MAX_RETRIES})...")
         self.wlan.connect(self._target_ssid, self._target_password)
@@ -140,12 +217,14 @@ class WiFiManager:
         if not self.ap.active():
             print(f"WiFiManager: Enabling AP Mode (SSID: {WiFiConfig.AP_SSID})...")
             try:
-                self.ap.config(essid=WiFiConfig.AP_SSID, password=WiFiConfig.AP_PASSWORD)
+                # Set security to WPA2 (3) if password provided, else Open (0)
+                security = 3 if WiFiConfig.AP_PASSWORD else 0
+                self.ap.config(essid=WiFiConfig.AP_SSID, password=WiFiConfig.AP_PASSWORD, security=security)
+                
                 self.ap.ifconfig((WiFiConfig.AP_IP, '255.255.255.0', WiFiConfig.AP_IP, '8.8.8.8'))
                 self.ap.active(True)
                 print(f"WiFiManager: AP Mode Started. IP: {self.ap.ifconfig()[0]}")
                 
-                # Start Services
                 self.dns_server.start()
                 await self.web_server.start(host='0.0.0.0', port=80)
                 
@@ -155,7 +234,6 @@ class WiFiManager:
         await asyncio.sleep(2)
 
     def _stop_ap_services(self):
-        """Helper to stop AP, DNS, and Web Server."""
         if self.ap.active():
             print("WiFiManager: Stopping AP Mode and Services...")
             self.dns_server.stop()

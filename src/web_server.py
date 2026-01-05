@@ -4,19 +4,12 @@ import gc
 class WebServer:
     """
     A lightweight asynchronous Web Server.
-    Supports basic routing and method handling.
+    Supports basic routing and method handling with POST body parsing.
     """
     def __init__(self):
         self._routes = {}
         self._running = False
         self._server = None
-
-    def route(self, path, method="GET"):
-        """Decorator to register a route handler."""
-        def decorator(handler):
-            self._routes[(path, method)] = handler
-            return handler
-        return decorator
 
     def add_route(self, path, handler, method="GET"):
         """Manually register a route handler."""
@@ -42,36 +35,55 @@ class WebServer:
                 return
 
             request_line = request_line.decode().strip()
+            if not request_line:
+                 writer.close()
+                 return
+                 
             method, path, _ = request_line.split(" ", 2)
             
-            print(f"WebServer: {method} {path}")
-            
-            # Read headers (consume until empty line)
+            # Read headers
             headers = {}
+            content_length = 0
             while True:
                 line = await reader.readline()
                 if not line or line == b'\r\n':
                     break
-                # Optional: Parse headers if needed
-                # parts = line.decode().split(":", 1)
-                # if len(parts) == 2: headers[parts[0].strip()] = parts[1].strip()
+                
+                line = line.decode().strip()
+                if ':' in line:
+                    key, value = line.split(":", 1)
+                    headers[key.lower()] = value.strip()
+                    if key.lower() == 'content-length':
+                        content_length = int(value.strip())
 
-            # Handle POST body (simplified)
-            body = None
-            # (In a full implementation, we'd read Content-Length and read the body)
+            # Read Body if POST
+            body = ""
+            if method == "POST" and content_length > 0:
+                body_bytes = await reader.read(content_length)
+                body = body_bytes.decode()
+
+            # Prepare request object (dictionary for simplicity)
+            request = {
+                "method": method,
+                "path": path,
+                "headers": headers,
+                "body": body,
+                "params": self._parse_params(body) if body else {}
+            }
+            
+            print(f"WebServer: {method} {path}")
             
             # Find handler
             handler = self._routes.get((path, method))
             
-            # Captive Portal: Fallback for unknown paths -> Redirect to root or serve portal
+            # Captive Portal Fallback
             if not handler:
-                # If checking for connectivity (e.g., Apple/Android checks), return Success or Redirect
                 if method == "GET":
-                     # Default fallback: 302 Redirect to root
-                     handler = self._handle_redirect_root
+                     # Default to root for any unknown GET (Captive Portal behavior)
+                     handler = self._routes.get(("/", "GET"))
             
             if handler:
-                response = await handler(request=None) # Pass request object in future
+                response = await handler(request)
                 writer.write(response)
                 await writer.drain()
             else:
@@ -81,8 +93,33 @@ class WebServer:
         except Exception as e:
             print(f"WebServer: Error: {e}")
         finally:
-            writer.close()
-            await writer.wait_closed()
+            try:
+                writer.close()
+                await writer.wait_closed()
+            except:
+                pass
 
-    async def _handle_redirect_root(self, request):
-        return b"HTTP/1.1 302 Found\r\nLocation: /\r\n\r\n"
+    def _parse_params(self, body):
+        """Parse URL-encoded body parameters."""
+        params = {}
+        if not body: return params
+        try:
+            pairs = body.split('&')
+            for pair in pairs:
+                if '=' in pair:
+                    key, value = pair.split('=', 1)
+                    # Simple URL decoding (replace + with space, %xx with char)
+                    value = value.replace('+', ' ')
+                    # Basic % decoding
+                    parts = value.split('%')
+                    decoded_value = parts[0]
+                    for part in parts[1:]:
+                        if len(part) >= 2:
+                            char_code = int(part[:2], 16)
+                            decoded_value += chr(char_code) + part[2:]
+                        else:
+                            decoded_value += '%' + part
+                    params[key] = decoded_value
+        except Exception as e:
+            print(f"WebServer: Error parsing params: {e}")
+        return params
