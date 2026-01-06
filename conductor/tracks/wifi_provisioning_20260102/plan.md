@@ -18,6 +18,6 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: AP Mode & Web Provisioning' (Protocol in workflow.md)
 
 ## Phase 4: Integration & Polish
-- [ ] Task: Create a unified API for the main application (`main.py`) to use
-- [ ] Task: Final code cleanup and documentation within code
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Integration' (Protocol in workflow.md)
+- [-] Task: Create a unified API for the main application (`main.py`) to use
+- [x] Task: Final code cleanup and documentation within code (daa53e8)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Integration' (Protocol in workflow.md)
