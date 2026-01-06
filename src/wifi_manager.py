@@ -54,7 +54,7 @@ PROVISIONING_HTML = """
     </div>
 </body>
 </html>
-"
+"""
 
 SUCCESS_HTML = """
 <!DOCTYPE html>
@@ -76,7 +76,7 @@ SUCCESS_HTML = """
     </div>
 </body>
 </html>
-"
+"""
 
 class WiFiManager:
     """
