@@ -3,14 +3,14 @@ from wifi_manager import WiFiManager, STATE_IDLE, STATE_CONNECTING, STATE_CONNEC
 
 async def blink_led():
     """
-    Simulates a user application task.
+    Simulates a background user application task.
     """
     while True:
         await asyncio.sleep(2)
 
 async def monitor_status(wm):
     """
-    Periodically prints the system status.
+    Monitor and report WiFi state changes.
     """
     last_state = -1
     while True:
@@ -23,25 +23,29 @@ async def monitor_status(wm):
             elif current_state == STATE_FAIL: state_name = "FAIL"
             elif current_state == STATE_AP_MODE: state_name = "AP MODE (Provisioning)"
             
-            print(f"Main: System State Changed to -> {state_name}")
+            print(f"System: State -> {state_name}")
             last_state = current_state
             
             if current_state == STATE_AP_MODE:
-                print("Main: Please connect to WiFi 'Picore-W-Setup' to configure device.")
+                print("Action: Connect to 'Picore-W-Setup' to configure the device.")
             
         await asyncio.sleep(1)
 
 async def main():
-    print("--- Picore-W System Start (Phase 3: AP Mode) ---")
+    """
+    Main entry point for the application.
+    Initializes the WiFi manager and starts concurrent tasks.
+    """
+    print("--- Picore-W Initializing ---")
     
-    # Initialize WiFiManager
+    # Initialize the WiFi Manager (starts its background state machine)
     wm = WiFiManager()
     
-    # Start tasks
+    # Launch concurrent system and application tasks
     asyncio.create_task(blink_led())
     asyncio.create_task(monitor_status(wm))
     
-    # Main loop
+    # Keep the event loop running
     while True:
         await asyncio.sleep(10)
 
@@ -49,4 +53,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("System Stopped")
+        print("\n--- System Stopped ---")
