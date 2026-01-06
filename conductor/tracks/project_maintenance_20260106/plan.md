@@ -2,7 +2,7 @@
 
 ## Phase 1: Environment Cleanup & Documentation
 - [x] Task: Create `.gitignore` to exclude editor settings, OS noise, and config files (1206371)
-- [ ] Task: Write `README.md` with Getting Started and Architecture sections
+- [x] Task: Write `README.md` with Getting Started and Architecture sections (8a367bf)
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Environment & Docs' (Protocol in workflow.md)
 
 ## Phase 2: Versioning & Release
