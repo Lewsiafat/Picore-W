@@ -11,11 +11,11 @@
 - [x] Task: Integrate storage with the State Machine (load on boot) (1807721)
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Configuration' (Protocol in workflow.md)
 
-## Phase 3: AP Mode & Web Provisioning
+## Phase 3: AP Mode & Web Provisioning [checkpoint: 74e66fd]
 - [x] Task: Implement AP mode activation when credentials are missing (3c78bba)
 - [x] Task: Build a lightweight async Web Server and Captive Portal logic (36a69f0)
 - [x] Task: Create the HTML/CSS provisioning page and credential save logic (f7a1990)
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: AP Mode & Web Provisioning' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: AP Mode & Web Provisioning' (Protocol in workflow.md)
 
 ## Phase 4: Integration & Polish
 - [ ] Task: Create a unified API for the main application (`main.py`) to use
