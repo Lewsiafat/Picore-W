@@ -6,7 +6,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Environment & Docs' (Protocol in workflow.md)
 
 ## Phase 2: Versioning & Release
-- [ ] Task: Establish versioning system and create the first tag `v1.0.0`
+- [x] Task: Establish versioning system and create the first tag `v1.0.0` (ce0bd70)
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Versioning' (Protocol in workflow.md)
 
 ## Phase 3: Remote Synchronization
