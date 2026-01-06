@@ -1,6 +1,7 @@
 import network
 import uasyncio as asyncio
 import time
+import machine
 from config_manager import ConfigManager
 from dns_server import DNSServer
 from web_server import WebServer
@@ -55,9 +56,9 @@ PROVISIONING_HTML = """
     </div>
 </body>
 </html>
-""
+"""
 
-SUCCESS_HTML = """
+SUCCESS_HTML = """"
 <!DOCTYPE html>
 <html>
 <head>
@@ -80,7 +81,7 @@ SUCCESS_HTML = """
     </div>
 </body>
 </html>
-""
+"""
 
 class WiFiManager:
     def __init__(self):
@@ -124,17 +125,26 @@ class WiFiManager:
         
         if ssid:
             print(f"WiFiManager: Received configuration for SSID: {ssid}")
-            # We schedule the connection, but we must return the HTTP response first.
-            # Using asyncio.create_task to delay the switch slightly allows the response to go out.
-            asyncio.create_task(self._delayed_connect(ssid, password))
-            return ("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + SUCCESS_HTML).encode()
+            
+            # 1. Save Config IMMEDIATELY
+            success = ConfigManager.save_config(ssid, password)
+            if success:
+                print("WiFiManager: Configuration saved successfully.")
+                # 2. Schedule Reboot
+                asyncio.create_task(self._reboot_device())
+                return ("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + SUCCESS_HTML).encode()
+            else:
+                print("WiFiManager: Failed to save configuration.")
+                return b"HTTP/1.1 500 Internal Server Error\r\n\r\nFailed to save config"
         else:
             return b"HTTP/1.1 400 Bad Request\r\n\r\nMissing SSID"
 
-    async def _delayed_connect(self, ssid, password):
-        """Wait a bit for the response to be sent, then trigger connection."""
-        await asyncio.sleep(1)
-        self.connect(ssid, password)
+    async def _reboot_device(self):
+        """Wait for response to send, then reboot."""
+        print("WiFiManager: Rebooting in 3 seconds...")
+        await asyncio.sleep(3)
+        print("WiFiManager: Rebooting NOW.")
+        machine.reset()
 
     async def _run_state_machine(self):
         print("WiFiManager: State Machine Started")
@@ -216,20 +226,22 @@ class WiFiManager:
     async def _handle_ap_mode(self):
         if not self.ap.active():
             print(f"WiFiManager: Enabling AP Mode (SSID: {WiFiConfig.AP_SSID})...")
-            try:
-                # Set security to WPA2 (3) if password provided, else Open (0)
-                security = 3 if WiFiConfig.AP_PASSWORD else 0
-                self.ap.config(essid=WiFiConfig.AP_SSID, password=WiFiConfig.AP_PASSWORD, security=security)
-                
-                self.ap.ifconfig((WiFiConfig.AP_IP, '255.255.255.0', WiFiConfig.AP_IP, '8.8.8.8'))
-                self.ap.active(True)
-                print(f"WiFiManager: AP Mode Started. IP: {self.ap.ifconfig()[0]}")
-                
-                self.dns_server.start()
-                await self.web_server.start(host='0.0.0.0', port=80)
-                
-            except Exception as e:
-                print(f"WiFiManager: Error starting AP Mode: {e}")
+            
+            # Simple AP Setup
+            self.ap.config(essid=WiFiConfig.AP_SSID, password=WiFiConfig.AP_PASSWORD)
+            self.ap.active(True)
+            
+            # Wait until active
+            while not self.ap.active():
+                await asyncio.sleep(0.1)
+            
+            current_ip = self.ap.ifconfig()[0]
+            print(f"WiFiManager: AP Started. IP: {current_ip}")
+            
+            # Start Services
+            self.dns_server.ip_address = current_ip
+            self.dns_server.start()
+            await self.web_server.start(host='0.0.0.0', port=80)
         
         await asyncio.sleep(2)
 
