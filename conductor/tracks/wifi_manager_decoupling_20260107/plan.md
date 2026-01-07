@@ -6,10 +6,10 @@
 - [x] Task: Create `src/config.py` and move default WiFi configuration constants (3e6546a)
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Constants' (Protocol in workflow.md)
 
-## Phase 2: Template Decoupling
+## Phase 2: Template Decoupling [checkpoint: 6258338]
 - [x] Task: Create `src/templates/` directory and migrate HTML to `.html` files (12803ed)
 - [x] Task: Implement file-based template reading logic in `WiFiManager` (bd7b7e5)
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Templates' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Templates' (Protocol in workflow.md)
 
 ## Phase 3: Integration & Cleanup
 - [ ] Task: Update `wifi_manager.py` and other modules to import from new constants/config
