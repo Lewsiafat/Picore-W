@@ -7,7 +7,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Constants' (Protocol in workflow.md)
 
 ## Phase 2: Template Decoupling
-- [ ] Task: Create `src/templates/` directory and migrate HTML to `.html` files
+- [x] Task: Create `src/templates/` directory and migrate HTML to `.html` files (12803ed)
 - [ ] Task: Implement file-based template reading logic in `WiFiManager`
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Templates' (Protocol in workflow.md)
 
