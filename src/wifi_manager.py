@@ -25,59 +25,6 @@ STATE_CONNECTED = 2
 STATE_FAIL = 3
 STATE_AP_MODE = 4
 
-# HTML Templates
-PROVISIONING_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Picore-W Setup</title>
-    <style>
-        body { font-family: -apple-system, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 320px; }
-        h1 { text-align: center; color: #1a73e8; margin-bottom: 1.5rem; font-size: 1.5rem; }
-        form { display: flex; flex-direction: column; gap: 1rem; }
-        input { padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
-        button { background: #1a73e8; color: white; border: none; padding: 0.75rem; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; }
-        .note { font-size: 0.8rem; color: #666; text-align: center; margin-top: 1rem; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Picore-W Setup</h1>
-        <form action="/configure" method="POST">
-            <input type="text" name="ssid" placeholder="WiFi Name (SSID)" required>
-            <input type="password" name="password" placeholder="WiFi Password" required>
-            <button type="submit">Connect</button>
-        </form>
-        <div class="note">Enter WiFi credentials to connect the device.</div>
-    </div>
-</body>
-</html>
-"""
-
-SUCCESS_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Saved</title>
-    <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
-        .container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { color: #34a853; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Settings Saved!</h1>
-        <p>The device is rebooting to apply settings.</p>
-        <p>Please reconnect your phone to your normal WiFi.</p>
-    </div>
-</body>
-</html>
-"""
-
 class WiFiManager:
     """
     Core WiFi management system. 
@@ -113,9 +60,18 @@ class WiFiManager:
         self.web_server.add_route("/generate_204", self._handle_root_request) # Android
         self.web_server.add_route("/configure", self._handle_configure, method="POST")
 
+    def _read_template(self, name):
+        """Read a template file from src/templates/."""
+        try:
+            with open(f"src/templates/{name}.html", "r") as f:
+                return f.read()
+        except OSError:
+            return f"Error: Template {name} not found"
+
     async def _handle_root_request(self, request):
         """Serve the main provisioning page."""
-        return ("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + PROVISIONING_HTML).encode()
+        html = self._read_template("provision")
+        return ("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + html).encode()
 
     async def _handle_configure(self, request):
         """Process form submission from the provisioning page."""
@@ -129,7 +85,8 @@ class WiFiManager:
             if success:
                 # Schedule a reboot to apply changes
                 asyncio.create_task(self._reboot_device())
-                return ("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + SUCCESS_HTML).encode()
+                html = self._read_template("success")
+                return ("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + html).encode()
             else:
                 return b"HTTP/1.1 500 Internal Server Error\r\n\r\nFailed to save configuration"
         else:
