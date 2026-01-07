@@ -44,12 +44,15 @@ class WiFiManager:
         self.web_server.add_route("/configure", self._handle_configure, method="POST")
 
     def _read_template(self, name):
-        """Read a template file from src/templates/."""
-        try:
-            with open(f"src/templates/{name}.html", "r") as f:
-                return f.read()
-        except OSError:
-            return f"Error: Template {name} not found"
+        """Read a template file from templates/ directory."""
+        paths = [f"templates/{name}.html", f"src/templates/{name}.html"]
+        for path in paths:
+            try:
+                with open(path, "r") as f:
+                    return f.read()
+            except OSError:
+                continue
+        return f"Error: Template {name} not found in {paths}"
 
     async def _handle_root_request(self, request):
         """Serve the main provisioning page."""
