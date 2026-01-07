@@ -1,5 +1,6 @@
 import uasyncio as asyncio
-from wifi_manager import WiFiManager, STATE_IDLE, STATE_CONNECTING, STATE_CONNECTED, STATE_FAIL, STATE_AP_MODE
+from wifi_manager import WiFiManager
+from constants import STATE_IDLE, STATE_CONNECTING, STATE_CONNECTED, STATE_FAIL, STATE_AP_MODE
 
 async def blink_led():
     """

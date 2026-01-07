@@ -5,25 +5,8 @@ import machine
 from config_manager import ConfigManager
 from dns_server import DNSServer
 from web_server import WebServer
-
-class WiFiConfig:
-    """Configuration constants for WiFi connection and AP mode."""
-    MAX_RETRIES = 5
-    CONNECT_TIMEOUT = 15
-    RETRY_DELAY = 2
-    FAIL_RECOVERY_DELAY = 30
-    HEALTH_CHECK_INTERVAL = 2
-    
-    AP_SSID = "Picore-W-Setup"
-    AP_PASSWORD = "password123"
-    AP_IP = "192.168.4.1"
-
-# WiFi State Machine Constants
-STATE_IDLE = 0
-STATE_CONNECTING = 1
-STATE_CONNECTED = 2
-STATE_FAIL = 3
-STATE_AP_MODE = 4
+from constants import *
+from config import WiFiConfig
 
 class WiFiManager:
     """
@@ -131,7 +114,7 @@ class WiFiManager:
 
     async def _handle_connecting(self):
         """Manage connection attempts and retries."""
-        self._stop_ap_services() 
+        self._stop_ap_services()
         
         print(f"WiFiManager: Connecting to {self._target_ssid} (Attempt {self._retry_count + 1}/{WiFiConfig.MAX_RETRIES})...")
         self.wlan.connect(self._target_ssid, self._target_password)
