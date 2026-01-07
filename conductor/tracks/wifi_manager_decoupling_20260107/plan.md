@@ -13,5 +13,5 @@
 
 ## Phase 3: Integration & Cleanup
 - [x] Task: Update `wifi_manager.py` and other modules to import from new constants/config (58e38c6)
-- [~] Task: Final cleanup of redundant strings and comments in `wifi_manager.py`
+- [x] Task: Final cleanup of redundant strings and comments in `wifi_manager.py` (d742619)
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Integration' (Protocol in workflow.md)
