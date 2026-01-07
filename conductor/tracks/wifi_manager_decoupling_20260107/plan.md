@@ -11,7 +11,7 @@
 - [x] Task: Implement file-based template reading logic in `WiFiManager` (bd7b7e5)
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Templates' (Protocol in workflow.md)
 
-## Phase 3: Integration & Cleanup
+## Phase 3: Integration & Cleanup [checkpoint: da06757]
 - [x] Task: Update `wifi_manager.py` and other modules to import from new constants/config (58e38c6)
 - [x] Task: Final cleanup of redundant strings and comments in `wifi_manager.py` (d742619)
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Integration' (Protocol in workflow.md)
