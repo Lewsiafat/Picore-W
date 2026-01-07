@@ -4,7 +4,7 @@
 - [x] Task: Create feature branch `refactor/wifi-manager-decoupling` (Branch Created)
 - [x] Task: Create `src/constants.py` and move WiFi state machine constants (0dadcc5)
 - [x] Task: Create `src/config.py` and move default WiFi configuration constants (3e6546a)
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Constants' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Constants' (Protocol in workflow.md)
 
 ## Phase 2: Template Decoupling
 - [ ] Task: Create `src/templates/` directory and migrate HTML to `.html` files
