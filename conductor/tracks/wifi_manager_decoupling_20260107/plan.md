@@ -1,6 +1,6 @@
 # Plan: WiFiManager Decoupling & Memory Optimization
 
-## Phase 1: Preparation & Constants
+## Phase 1: Preparation & Constants [checkpoint: 9d89bf5]
 - [x] Task: Create feature branch `refactor/wifi-manager-decoupling` (Branch Created)
 - [x] Task: Create `src/constants.py` and move WiFi state machine constants (0dadcc5)
 - [x] Task: Create `src/config.py` and move default WiFi configuration constants (3e6546a)
