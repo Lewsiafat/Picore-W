@@ -8,7 +8,7 @@
 
 ## Phase 2: Template Decoupling
 - [x] Task: Create `src/templates/` directory and migrate HTML to `.html` files (12803ed)
-- [ ] Task: Implement file-based template reading logic in `WiFiManager`
+- [x] Task: Implement file-based template reading logic in `WiFiManager` (bd7b7e5)
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Templates' (Protocol in workflow.md)
 
 ## Phase 3: Integration & Cleanup
