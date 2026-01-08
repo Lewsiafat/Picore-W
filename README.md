@@ -48,6 +48,25 @@ if __name__ == "__main__":
 
 ---
 
+## Lifecycle Management (State Machine)
+
+Picore-W uses an internal state machine to track network status. You can access the current state using `wm.get_status()`.
+
+| State Constant | Value | Description |
+| :--- | :--- | :--- |
+| `STATE_IDLE` | 0 | Initial state or waiting for command. |
+| `STATE_CONNECTING` | 1 | Attempting to join a WiFi network. |
+| `STATE_CONNECTED` | 2 | Successfully connected with assigned IP. |
+| `STATE_FAIL` | 3 | Connection failed. The system will cool down and retry. |
+| `STATE_AP_MODE` | 4 | Provisioning mode active (Hotspot mode). |
+
+### Error Handling & Auto-Recovery
+- **Connection Lost**: If the network drops while in `STATE_CONNECTED`, the manager will automatically transition back to `STATE_CONNECTING` and try to restore the link.
+- **Retries**: The system attempts to connect multiple times (configured in `config.py`) before entering a temporary `STATE_FAIL` cooldown.
+- **AP Fallback**: If no valid credentials exist, the system safely enters `STATE_AP_MODE` to wait for user input.
+
+---
+
 ## Provisioning Mode
 If it's the first boot or no configuration is found, the device will:
 1. Start a WiFi hotspot named `Picore-W-Setup`.
