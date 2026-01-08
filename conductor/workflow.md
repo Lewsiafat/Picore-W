@@ -260,6 +260,30 @@ git commit -m "test(comments): Add tests for emoji reaction limits"
 git commit -m "style(mobile): Improve button touch targets"
 ```
 
+## Versioning & Release Workflow
+
+This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and maintains a manual `CHANGELOG.md`.
+
+### Versioning Scheme
+- **vMAJOR**: Incompatible API changes (e.g., breaking `WiFiManager` public methods).
+- **vMINOR**: Backward-compatible functionality (e.g., new features, new examples).
+- **vPATCH**: Backward-compatible bug fixes or cleanup.
+
+### Release Procedure
+1. **Sync Plan & Docs**: Ensure all tracks are closed and documentation is synchronized.
+2. **Update Changelog**:
+   - Categorize changes into `Added`, `Changed`, `Fixed`, etc.
+   - Use the [Keep a Changelog](https://keepachangelog.com/) format.
+3. **Commit Version Change**: Commit the `CHANGELOG.md` with message `chore: Prepare release vX.Y.Z`.
+4. **Create Tag**: Create an **annotated** git tag:
+   ```bash
+   git tag -a vX.Y.Z -m "Release vX.Y.Z: [Short summary]"
+   ```
+5. **Push to Remote**:
+   ```bash
+   git push origin main --tags
+   ```
+
 ## Definition of Done
 
 A task is complete when:
