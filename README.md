@@ -69,13 +69,20 @@ Picore-W uses an internal state machine to track network status. You can access 
 
 ## Returning to Provisioning (AP) Mode
 
-If you have already configured the device but wish to enter Provisioning Mode again (e.g., to join a new network), you can do so by deleting the configuration file via the REPL:
+If you have already configured the device but wish to enter Provisioning Mode again (e.g., to join a new network), you can run the provided `restore.py` script:
+
+1. Upload `src/restore.py` to your Pico.
+2. Run it via REPL or your IDE.
+
+This script deletes the configuration file (`wifi_config.json`) and reboots the device automatically.
 
 ```python
-import os
-os.remove('wifi_config.json')
-# Then reboot the device
-import machine
+# Manual method via REPL:
+import os, machine
+try:
+    os.remove('wifi_config.json')
+except:
+    pass
 machine.reset()
 ```
 
