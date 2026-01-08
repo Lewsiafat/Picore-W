@@ -67,6 +67,19 @@ Picore-W uses an internal state machine to track network status. You can access 
 
 ---
 
+## Architecture & Files
+
+The project is designed with a clear separation of concerns:
+
+- **`wifi_manager.py`**: The core business logic and state machine.
+- **`config.py`**: Contains default settings (Timeouts, Max Retries, AP SSID). Modify this for basic customization.
+- **`constants.py`**: Shared state definitions.
+- **`config_manager.py`**: Handles low-level JSON read/write to the flash filesystem.
+- **`templates/`**: HTML files for the provisioning web interface.
+- **`dns_server.py` & `web_server.py`**: Lightweight services for the Captive Portal.
+
+---
+
 ## Provisioning Mode
 If it's the first boot or no configuration is found, the device will:
 1. Start a WiFi hotspot named `Picore-W-Setup`.
