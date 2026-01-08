@@ -1,6 +1,6 @@
 # Picore-W
 
-Picore-W is a robust infrastructure library for Raspberry Pi Pico 2 W (RP2350) powered by MicroPython. It provides a resilient network layer designed for high-availability IoT applications.
+Picore-W is a robust infrastructure library for **Raspberry Pi Pico 2 W (RP2350)** and **Raspberry Pi Pico W (RP2040)** powered by MicroPython. It provides a resilient network layer designed for high-availability IoT applications.
 
 ## Key Features
 
@@ -61,31 +61,44 @@ Picore-W uses an internal state machine to track network status. You can access 
 | `STATE_AP_MODE` | 4 | Provisioning mode active (Hotspot mode). |
 
 ### Error Handling & Auto-Recovery
-- **Connection Lost**: If the network drops while in `STATE_CONNECTED`, the manager will automatically transition back to `STATE_CONNECTING` and try to restore the link.
+- **Connection Lost**: If the network drops while in `STATE_CONNECTED`, the manager will automatically transition back to `STATE_CONNECTING`.
 - **Retries**: The system attempts to connect multiple times (configured in `config.py`) before entering a temporary `STATE_FAIL` cooldown.
-- **AP Fallback**: If no valid credentials exist, the system safely enters `STATE_AP_MODE` to wait for user input.
+- **AP Fallback**: If no valid credentials exist, the system safely enters `STATE_AP_MODE`.
+
+---
+
+## Returning to Provisioning (AP) Mode
+
+If you have already configured the device but wish to enter Provisioning Mode again (e.g., to join a new network), you can do so by deleting the configuration file via the REPL:
+
+```python
+import os
+os.remove('wifi_config.json')
+# Then reboot the device
+import machine
+machine.reset()
+```
+
+---
+
+## Troubleshooting Tips
+
+If you encounter issues during connection or provisioning:
+
+1. **Power Cycle**: If the network stack seems stuck, unplug the USB cable, wait for 5-10 seconds, and plug it back in. A cold boot often resolves hardware-level hangs.
+2. **Firmware Integrity**: Ensure you are using the latest stable MicroPython firmware. If behavior is inconsistent, try re-flashing the firmware (erasing flash if necessary).
+3. **Template Paths**: Make sure the `templates/` folder is uploaded to the same directory as `wifi_manager.py`.
+4. **Signal Strength**: Ensure the Pico is within a reasonable distance of the router and that the power supply is stable (AP mode consumes significant peak current).
 
 ---
 
 ## Architecture & Files
 
-The project is designed with a clear separation of concerns:
-
 - **`wifi_manager.py`**: The core business logic and state machine.
-- **`config.py`**: Contains default settings (Timeouts, Max Retries, AP SSID). Modify this for basic customization.
+- **`config.py`**: Default settings (Timeouts, Max Retries, AP SSID).
 - **`constants.py`**: Shared state definitions.
-- **`config_manager.py`**: Handles low-level JSON read/write to the flash filesystem.
-- **`templates/`**: HTML files for the provisioning web interface.
-- **`dns_server.py` & `web_server.py`**: Lightweight services for the Captive Portal.
-
----
-
-## Provisioning Mode
-If it's the first boot or no configuration is found, the device will:
-1. Start a WiFi hotspot named `Picore-W-Setup`.
-2. Use the default password: `password123`.
-3. Redirect any web request to the setup page (Captive Portal).
-4. Save your credentials and reboot automatically.
+- **`config_manager.py`**: Handles JSON persistence.
+- **`templates/`**: HTML files for the web interface.
 
 ---
 
