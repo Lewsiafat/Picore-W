@@ -1,6 +1,6 @@
 # Plan: Library Integration Support & Multilingual Documentation
 
-## Phase 1: Structure & Examples
+## Phase 1: Structure & Examples [checkpoint: 938a3f2]
 - [x] Task: Create `examples/` directory and implement `wifi_connect.py` (9479e78)
 - [x] Task: Rename existing `README.md` to `README.zh-TW.md` (8529f19)
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)
