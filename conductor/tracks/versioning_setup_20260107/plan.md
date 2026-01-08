@@ -1,6 +1,6 @@
 # Plan: Versioning & Release Management Establishment
 
-## Phase 1: Standardization & Documentation
+## Phase 1: Standardization & Documentation [checkpoint: fad8fe1]
 - [x] Task: Create `CHANGELOG.md` with entries for v1.0.0 and v1.1.0 (00de855)
 - [x] Task: Update `conductor/workflow.md` to include Versioning & Release rules (e4c84c3)
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Standardization' (Protocol in workflow.md)
