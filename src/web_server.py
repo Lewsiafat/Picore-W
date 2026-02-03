@@ -1,4 +1,9 @@
+"""
+Lightweight asynchronous HTTP server designed for device provisioning.
+Supports basic routing, header parsing, and URL-encoded body parameters.
+"""
 import uasyncio as asyncio
+from logger import Logger
 
 # Security limit for Content-Length to prevent memory exhaustion
 MAX_CONTENT_LENGTH = 1024  # 1KB is sufficient for provisioning forms
@@ -9,37 +14,39 @@ class WebServer:
     A lightweight asynchronous HTTP server designed for device provisioning.
     Supports basic routing, header parsing, and URL-encoded body parameters.
     """
+
     def __init__(self):
+        self._log = Logger("WebServer")
         self._routes = {}
         self._running = False
         self._server = None
 
-    def add_route(self, path, handler, method="GET"):
+    def add_route(self, path: str, handler, method: str = "GET") -> None:
         """
         Register a handler for a specific URL path and HTTP method.
 
         Args:
-            path (str): The URL path (e.g., '/').
-            handler (callable): Async function to handle the request.
-            method (str): HTTP method (default 'GET').
+            path: The URL path (e.g., '/').
+            handler: Async function to handle the request.
+            method: HTTP method (default 'GET').
         """
         self._routes[(path, method)] = handler
 
-    async def start(self, host='0.0.0.0', port=80):
+    async def start(self, host: str = '0.0.0.0', port: int = 80) -> None:
         """Starts the asynchronous HTTP server."""
         if not self._running:
             self._running = True
-            print(f"WebServer: Starting on {host}:{port}")
+            self._log.info(f"Started on {host}:{port}")
             self._server = await asyncio.start_server(self._handle_client, host, port)
 
-    def stop(self):
+    def stop(self) -> None:
         """Stops the HTTP server."""
         if self._running and self._server:
             self._server.close()
             self._running = False
-            print("WebServer: Stopped")
+            self._log.info("Stopped")
 
-    async def _handle_client(self, reader, writer):
+    async def _handle_client(self, reader, writer) -> None:
         """Internal handler for individual client connections."""
         try:
             request_line = await reader.readline()
@@ -54,8 +61,8 @@ class WebServer:
                 writer.close()
                 return
             if not request_line:
-                 writer.close()
-                 return
+                writer.close()
+                return
 
             parts = request_line.split(" ", 2)
             if len(parts) < 2:
@@ -109,7 +116,7 @@ class WebServer:
 
             # Captive Portal Fallback: redirect any unknown GET requests to the root
             if not handler and method == "GET":
-                 handler = self._routes.get(("/", "GET"))
+                handler = self._routes.get(("/", "GET"))
 
             if handler:
                 response = await handler(request)
@@ -120,7 +127,7 @@ class WebServer:
                 await writer.drain()
 
         except Exception as e:
-            print(f"WebServer: Handler error: {e}")
+            self._log.error(f"Handler error: {e}")
         finally:
             try:
                 writer.close()
@@ -128,18 +135,19 @@ class WebServer:
             except (OSError, asyncio.TimeoutError):
                 pass
 
-    def _parse_params(self, body):
+    def _parse_params(self, body: str) -> dict:
         """
         Parses URL-encoded form data from the request body.
 
         Args:
-            body (str): The raw body string.
+            body: The raw body string.
 
         Returns:
-            dict: Parsed key-value pairs.
+            Parsed key-value pairs.
         """
         params = {}
-        if not body: return params
+        if not body:
+            return params
         try:
             pairs = body.split('&')
             for pair in pairs:
@@ -160,5 +168,5 @@ class WebServer:
                             decoded_value += '%' + part
                     params[key] = decoded_value
         except Exception as e:
-            print(f"WebServer: Parameter parsing error: {e}")
+            self._log.error(f"Param parsing error: {e}")
         return params

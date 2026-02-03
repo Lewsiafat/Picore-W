@@ -1,5 +1,10 @@
+"""
+Minimal asynchronous DNS server for Captive Portal functionality.
+Intercepts all DNS queries and redirects them to a specific IP address.
+"""
 import uasyncio as asyncio
 import usocket as socket
+from logger import Logger
 
 # DNS Protocol Constants
 DNS_FLAGS_RESPONSE = b'\x81\x80'  # Standard query response, No error
@@ -16,27 +21,29 @@ class DNSServer:
     A minimal asynchronous DNS server for Captive Portal functionality.
     It intercepts all DNS queries and redirects them to a specific IP address.
     """
-    def __init__(self, ip_address):
+
+    def __init__(self, ip_address: str):
         """
         Initialize the DNS server.
 
         Args:
-            ip_address (str): The local IP address to redirect all queries to.
+            ip_address: The local IP address to redirect all queries to.
         """
+        self._log = Logger("DNSServer")
         self.ip_address = ip_address
         self._ip_bytes = self._validate_ip(ip_address)
         self._running = False
         self._task = None
 
-    def _validate_ip(self, ip_str):
+    def _validate_ip(self, ip_str: str) -> bytes:
         """
         Validate and convert IP address string to bytes.
 
         Args:
-            ip_str (str): IP address in dotted decimal format.
+            ip_str: IP address in dotted decimal format.
 
         Returns:
-            bytes: IP address as 4 bytes, or None if invalid.
+            IP address as 4 bytes, or None if invalid.
         """
         try:
             parts = ip_str.split('.')
@@ -49,26 +56,27 @@ class DNSServer:
             pass
         return None
 
-    def start(self):
+    def start(self) -> None:
         """Starts the DNS server background task."""
         if not self._running:
             # Re-validate IP in case it was changed
             self._ip_bytes = self._validate_ip(self.ip_address)
             if not self._ip_bytes:
-                print(f"DNSServer: Invalid IP address: {self.ip_address}")
+                self._log.error(f"Invalid IP: {self.ip_address}")
                 return
             self._running = True
             self._task = asyncio.create_task(self._run())
-            print(f"DNSServer: Started (Redirecting all queries to {self.ip_address})")
+            self._log.info(f"Started (redirect to {self.ip_address})")
 
-    def stop(self):
+    def stop(self) -> None:
         """Stops the DNS server and cancels the background task."""
-        self._running = False
-        if self._task:
-            self._task.cancel()
-        print("DNSServer: Stopped")
+        if self._running:
+            self._running = False
+            if self._task:
+                self._task.cancel()
+            self._log.info("Stopped")
 
-    async def _run(self):
+    async def _run(self) -> None:
         """Main loop for the DNS server listening on UDP port 53."""
         udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udps.setblocking(False)
@@ -76,7 +84,7 @@ class DNSServer:
         try:
             udps.bind(('0.0.0.0', 53))
         except Exception as e:
-            print(f"DNSServer: Failed to bind port 53: {e}")
+            self._log.error(f"Failed to bind port 53: {e}")
             udps.close()
             return
 
@@ -99,20 +107,20 @@ class DNSServer:
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    print(f"DNSServer: Error handling request: {e}")
+                    self._log.error(f"Request error: {e}")
                     await asyncio.sleep(1)
         finally:
             udps.close()
 
-    def _make_response(self, request):
+    def _make_response(self, request: bytes) -> bytes:
         """
         Constructs a minimal DNS response (A record) pointing to the local IP.
 
         Args:
-            request (bytes): The raw DNS request packet.
+            request: The raw DNS request packet.
 
         Returns:
-            bytes: The constructed DNS response packet, or None if invalid.
+            The constructed DNS response packet, or None if invalid.
         """
         # Validate minimum packet length
         if len(request) < DNS_MIN_PACKET_LEN:
@@ -142,5 +150,5 @@ class DNSServer:
             return packet + payload + answer
 
         except Exception as e:
-            print(f"DNSServer: Response generation error: {e}")
+            self._log.error(f"Response error: {e}")
             return None
