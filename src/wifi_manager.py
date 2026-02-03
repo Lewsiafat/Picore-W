@@ -5,23 +5,29 @@ import machine
 from config_manager import ConfigManager
 from dns_server import DNSServer
 from web_server import WebServer
-from constants import *
+from constants import (
+    STATE_IDLE, STATE_CONNECTING, STATE_CONNECTED, STATE_FAIL, STATE_AP_MODE
+)
 from config import WiFiConfig
+
+# AP activation timeout (in 100ms ticks)
+AP_ACTIVATION_TIMEOUT = 50  # 5 seconds
+
 
 class WiFiManager:
     """
-    Core WiFi management system. 
+    Core WiFi management system.
     Handles connection lifecycles, retries, and web-based provisioning.
     """
     def __init__(self):
         # Station interface for connecting to existing networks
         self.wlan = network.WLAN(network.STA_IF)
         self.wlan.active(True)
-        
+
         # Access Point interface for provisioning mode
         self.ap = network.WLAN(network.AP_IF)
         self.ap.active(False)
-        
+
         # Network services
         self.dns_server = DNSServer(WiFiConfig.AP_IP)
         self.web_server = WebServer()
@@ -32,19 +38,25 @@ class WiFiManager:
         self._target_ssid = None
         self._target_password = None
         self._retry_count = 0
-        
+
         # Start the background state machine task
         asyncio.create_task(self._run_state_machine())
 
     def _setup_routes(self):
         """Register routes for the provisioning web server."""
         self.web_server.add_route("/", self._handle_root_request)
-        self.web_server.add_route("/hotspot-detect.html", self._handle_root_request) # Apple
-        self.web_server.add_route("/generate_204", self._handle_root_request) # Android
+        self.web_server.add_route("/hotspot-detect.html", self._handle_root_request)  # Apple
+        self.web_server.add_route("/generate_204", self._handle_root_request)  # Android
         self.web_server.add_route("/configure", self._handle_configure, method="POST")
 
     def _read_template(self, name):
         """Read a template file from templates/ directory."""
+        # Validate template name (alphanumeric and underscore only)
+        allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+        for char in name:
+            if char not in allowed:
+                return "Error: Invalid template name"
+
         paths = [f"templates/{name}.html", f"src/templates/{name}.html"]
         for path in paths:
             try:
@@ -54,29 +66,38 @@ class WiFiManager:
                 continue
         return f"Error: Template {name} not found in {paths}"
 
+    def _build_html_response(self, html, status=200):
+        """Build an HTTP response with HTML content."""
+        return f"HTTP/1.1 {status} OK\r\nContent-Type: text/html\r\n\r\n{html}".encode()
+
     async def _handle_root_request(self, request):
         """Serve the main provisioning page."""
         html = self._read_template("provision")
-        return ("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + html).encode()
+        return self._build_html_response(html)
 
     async def _handle_configure(self, request):
         """Process form submission from the provisioning page."""
         params = request.get("params", {})
-        ssid = params.get("ssid")
-        password = params.get("password")
-        
-        if ssid:
-            # Save configuration to flash immediately
-            success = ConfigManager.save_config(ssid, password)
-            if success:
-                # Schedule a reboot to apply changes
-                asyncio.create_task(self._reboot_device())
-                html = self._read_template("success")
-                return ("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + html).encode()
-            else:
-                return b"HTTP/1.1 500 Internal Server Error\r\n\r\nFailed to save configuration"
+        ssid = params.get("ssid", "").strip()
+        password = params.get("password", "")
+
+        # Validate SSID (1-32 bytes, required)
+        if not ssid or len(ssid) > 32:
+            return b"HTTP/1.1 400 Bad Request\r\n\r\nInvalid SSID (must be 1-32 characters)"
+
+        # Validate Password (8-63 chars for WPA2, or empty for open network)
+        if password and (len(password) < 8 or len(password) > 63):
+            return b"HTTP/1.1 400 Bad Request\r\n\r\nInvalid password (must be 8-63 characters or empty)"
+
+        # Save configuration to flash immediately
+        success = ConfigManager.save_config(ssid, password)
+        if success:
+            # Schedule a reboot to apply changes
+            asyncio.create_task(self._reboot_device())
+            html = self._read_template("success")
+            return self._build_html_response(html)
         else:
-            return b"HTTP/1.1 400 Bad Request\r\n\r\nMissing SSID"
+            return b"HTTP/1.1 500 Internal Server Error\r\n\r\nFailed to save configuration"
 
     async def _reboot_device(self):
         """Delayed reboot to allow HTTP response to be sent."""
@@ -118,10 +139,10 @@ class WiFiManager:
     async def _handle_connecting(self):
         """Manage connection attempts and retries."""
         self._stop_ap_services()
-        
+
         print(f"WiFiManager: Connecting to {self._target_ssid} (Attempt {self._retry_count + 1}/{WiFiConfig.MAX_RETRIES})...")
         self.wlan.connect(self._target_ssid, self._target_password)
-        
+
         start_time = time.time()
         while (time.time() - start_time) < WiFiConfig.CONNECT_TIMEOUT:
             if self.wlan.isconnected():
@@ -129,13 +150,13 @@ class WiFiManager:
                 self._state = STATE_CONNECTED
                 self._retry_count = 0
                 return
-            
+
             status = self.wlan.status()
             # Stop early if explicit failure is detected
             if status == network.STAT_CONNECT_FAIL or status == network.STAT_NO_AP_FOUND or status == network.STAT_WRONG_PASSWORD:
                 break
             await asyncio.sleep(0.5)
-            
+
         self._retry_count += 1
         if self._retry_count >= WiFiConfig.MAX_RETRIES:
             print("WiFiManager: Connection failed after multiple attempts.")
@@ -157,7 +178,7 @@ class WiFiManager:
     async def _handle_fail(self):
         """Handle failure state with recovery delay."""
         for _ in range(WiFiConfig.FAIL_RECOVERY_DELAY):
-            if self._state != STATE_FAIL: return 
+            if self._state != STATE_FAIL: return
             await asyncio.sleep(1)
         self._retry_count = 0
         self._state = STATE_CONNECTING
@@ -168,17 +189,24 @@ class WiFiManager:
             print(f"WiFiManager: Enabling Access Point (SSID: {WiFiConfig.AP_SSID})...")
             self.ap.config(essid=WiFiConfig.AP_SSID, password=WiFiConfig.AP_PASSWORD)
             self.ap.active(True)
-            
-            while not self.ap.active():
+
+            # Wait for AP activation with timeout
+            for _ in range(AP_ACTIVATION_TIMEOUT):
+                if self.ap.active():
+                    break
                 await asyncio.sleep(0.1)
-            
+            else:
+                print("WiFiManager: AP activation timeout")
+                self._state = STATE_FAIL
+                return
+
             current_ip = self.ap.ifconfig()[0]
             print(f"WiFiManager: AP Mode active at {current_ip}")
-            
+
             self.dns_server.ip_address = current_ip
             self.dns_server.start()
             await self.web_server.start(host='0.0.0.0', port=80)
-        
+
         await asyncio.sleep(2)
 
     def _stop_ap_services(self):
@@ -210,7 +238,7 @@ class WiFiManager:
     def get_status(self):
         """Get the current state machine state."""
         return self._state
-        
+
     def get_config(self):
         """Get current IP configuration."""
         return self.wlan.ifconfig()

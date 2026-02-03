@@ -1,5 +1,9 @@
 import uasyncio as asyncio
 
+# Security limit for Content-Length to prevent memory exhaustion
+MAX_CONTENT_LENGTH = 1024  # 1KB is sufficient for provisioning forms
+
+
 class WebServer:
     """
     A lightweight asynchronous HTTP server designed for device provisioning.
@@ -43,18 +47,22 @@ class WebServer:
                 writer.close()
                 return
 
-            # Decode and parse the first line of the request
-            request_line = request_line.decode().strip()
+            # Decode request line
+            try:
+                request_line = request_line.decode('utf-8').strip()
+            except UnicodeError:
+                writer.close()
+                return
             if not request_line:
                  writer.close()
                  return
-                 
+
             parts = request_line.split(" ", 2)
             if len(parts) < 2:
                 writer.close()
                 return
             method, path = parts[0], parts[1]
-            
+
             # Read and parse headers to extract content length for POST requests
             headers = {}
             content_length = 0
@@ -62,15 +70,19 @@ class WebServer:
                 line = await reader.readline()
                 if not line or line == b'\r\n':
                     break
-                
-                line_str = line.decode().strip()
+
+                try:
+                    line_str = line.decode('utf-8').strip()
+                except UnicodeError:
+                    continue
                 if ':' in line_str:
                     key, value = line_str.split(":", 1)
                     key = key.lower().strip()
                     headers[key] = value.strip()
                     if key == 'content-length':
                         try:
-                            content_length = int(value.strip())
+                            # Enforce maximum content length for security
+                            content_length = min(int(value.strip()), MAX_CONTENT_LENGTH)
                         except ValueError:
                             content_length = 0
 
@@ -78,7 +90,10 @@ class WebServer:
             body = ""
             if method == "POST" and content_length > 0:
                 body_bytes = await reader.read(content_length)
-                body = body_bytes.decode()
+                try:
+                    body = body_bytes.decode('utf-8')
+                except UnicodeError:
+                    body = ""
 
             # Construct request context
             request = {
@@ -88,14 +103,14 @@ class WebServer:
                 "body": body,
                 "params": self._parse_params(body) if body else {}
             }
-            
+
             # Find and execute the registered route handler
             handler = self._routes.get((path, method))
-            
+
             # Captive Portal Fallback: redirect any unknown GET requests to the root
             if not handler and method == "GET":
                  handler = self._routes.get(("/", "GET"))
-            
+
             if handler:
                 response = await handler(request)
                 writer.write(response)
@@ -103,14 +118,14 @@ class WebServer:
             else:
                 writer.write(b"HTTP/1.1 404 Not Found\r\n\r\nNot Found")
                 await writer.drain()
-                
+
         except Exception as e:
             print(f"WebServer: Handler error: {e}")
         finally:
             try:
                 writer.close()
                 await writer.wait_closed()
-            except:
+            except (OSError, asyncio.TimeoutError):
                 pass
 
     def _parse_params(self, body):

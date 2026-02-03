@@ -18,18 +18,13 @@ class ConfigManager:
             dict: Configuration data containing 'ssid' and 'password', or None if file doesn't exist or is invalid.
         """
         try:
-            try:
-                os.stat(CONFIG_FILE)
-            except OSError:
-                # File does not exist
-                return None
-                
             with open(CONFIG_FILE, "r") as f:
-                config = json.load(f)
-                return config
-                
-        except (ValueError, OSError) as e:
-            # Handle potential file corruption or access errors silently or with minimal logging
+                return json.load(f)
+        except OSError:
+            # File does not exist
+            return None
+        except ValueError as e:
+            # JSON parsing error (corrupted file)
             print(f"ConfigManager: Error loading config: {e}")
             return None
 

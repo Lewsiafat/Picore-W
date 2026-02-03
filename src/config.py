@@ -17,5 +17,5 @@ class WiFiConfig:
     
     # AP Mode Settings for Provisioning
     AP_SSID = "Picore-W-Setup"
-    AP_PASSWORD = "password123" # Default secure password
+    AP_PASSWORD = "PicoreSetup2024!"  # Default password (mixed case, digits, symbol)
     AP_IP = "192.168.4.1"
