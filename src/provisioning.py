@@ -1,0 +1,115 @@
+"""
+Provisioning handler for WiFi configuration via web interface.
+Handles HTTP routes, template rendering, and form processing.
+"""
+import uasyncio as asyncio
+import machine
+from config_manager import ConfigManager
+
+
+class ProvisioningHandler:
+    """
+    Handles web-based WiFi provisioning.
+    Manages routes, templates, and configuration form processing.
+    """
+
+    def __init__(self, web_server, on_config_saved=None):
+        """
+        Initialize the provisioning handler.
+
+        Args:
+            web_server: WebServer instance to register routes on.
+            on_config_saved: Optional callback when config is saved successfully.
+        """
+        self._web_server = web_server
+        self._on_config_saved = on_config_saved
+        self._reboot_task = None
+        self._setup_routes()
+
+    def _setup_routes(self):
+        """Register routes for the provisioning web server."""
+        self._web_server.add_route("/", self._handle_root_request)
+        # Apple captive portal detection
+        self._web_server.add_route("/hotspot-detect.html", self._handle_root_request)
+        # Android captive portal detection
+        self._web_server.add_route("/generate_204", self._handle_root_request)
+        self._web_server.add_route("/configure", self._handle_configure, method="POST")
+
+    def _read_template(self, name):
+        """
+        Read a template file from templates/ directory.
+
+        Args:
+            name: Template name (without .html extension).
+
+        Returns:
+            str: Template content or error message.
+        """
+        # Validate template name (alphanumeric and underscore only)
+        allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+        for char in name:
+            if char not in allowed:
+                return "Error: Invalid template name"
+
+        paths = [f"templates/{name}.html", f"src/templates/{name}.html"]
+        for path in paths:
+            try:
+                with open(path, "r") as f:
+                    return f.read()
+            except OSError:
+                continue
+        return f"Error: Template {name} not found"
+
+    def _build_html_response(self, html, status=200):
+        """
+        Build an HTTP response with HTML content.
+
+        Args:
+            html: HTML content string.
+            status: HTTP status code (default 200).
+
+        Returns:
+            bytes: Encoded HTTP response.
+        """
+        return f"HTTP/1.1 {status} OK\r\nContent-Type: text/html\r\n\r\n{html}".encode()
+
+    async def _handle_root_request(self, request):
+        """Serve the main provisioning page."""
+        html = self._read_template("provision")
+        return self._build_html_response(html)
+
+    async def _handle_configure(self, request):
+        """Process form submission from the provisioning page."""
+        print("Provisioning: Received configure request")
+        params = request.get("params", {})
+        ssid = params.get("ssid", "").strip()
+        password = params.get("password", "")
+
+        # Validate SSID (1-32 bytes, required)
+        if not ssid or len(ssid) > 32:
+            return b"HTTP/1.1 400 Bad Request\r\n\r\nInvalid SSID (must be 1-32 characters)"
+
+        # Validate Password (8-63 chars for WPA2, or empty for open network)
+        if password and (len(password) < 8 or len(password) > 63):
+            return b"HTTP/1.1 400 Bad Request\r\n\r\nInvalid password (must be 8-63 characters or empty)"
+
+        # Save configuration to flash
+        success = ConfigManager.save_config(ssid, password)
+        print(f"Provisioning: Config saved = {success}")
+        if success:
+            # Notify callback if provided
+            if self._on_config_saved:
+                self._on_config_saved(ssid, password)
+
+            # Schedule a reboot to apply changes
+            self._reboot_task = asyncio.create_task(self._reboot_device())
+            html = self._read_template("success")
+            return self._build_html_response(html)
+        else:
+            return b"HTTP/1.1 500 Internal Server Error\r\n\r\nFailed to save configuration"
+
+    async def _reboot_device(self):
+        """Delayed reboot to allow HTTP response to be sent."""
+        print("Provisioning: Settings saved. Rebooting in 3 seconds...")
+        await asyncio.sleep(3)
+        machine.reset()
