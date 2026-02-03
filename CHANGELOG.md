@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-03
+
+### Added
+- `src/logger.py` - Lightweight logging system with configurable levels (DEBUG, INFO, WARNING, ERROR).
+- `src/provisioning.py` - Extracted provisioning handler for WiFi configuration via web interface.
+- Type hints for all public APIs across modules.
+- State transition logging in WiFiManager (`_set_state()` method).
+- `get_status_name()` method for human-readable state names.
+- `enter_ap_mode()` method for manual provisioning mode entry.
+
+### Changed
+- **Architecture Refactor:** Extracted route handling, template reading, and form processing from `WiFiManager` to `ProvisioningHandler`.
+- **Dependency Injection:** `WiFiManager` now accepts optional `dns_server` and `web_server` parameters.
+- **Background Task Reference:** State machine task is now stored to prevent garbage collection.
+- **FAIL State Behavior:** After cooldown, enters AP_MODE instead of CONNECTING (allows user reconfiguration).
+- Unified logging format: `[LEVEL] Module: message` across all modules.
+- Replaced star import with explicit imports in `wifi_manager.py`.
+- Simplified redundant `os.stat()` check in `config_manager.py`.
+
+### Security
+- Fixed bare `except:` clauses in `restore.py` and `web_server.py`.
+- Added AP activation timeout (5 seconds) to prevent infinite wait.
+- Added SSID validation (1-32 characters) and password validation (8-63 characters or empty).
+- Added `Content-Length` limit (1KB) to prevent memory exhaustion attacks.
+- Added DNS packet minimum length validation (12 bytes).
+- Added IP address format validation in `DNSServer`.
+- Added template name validation to prevent path traversal.
+- Changed default AP password to stronger value (`PicoreSetup2024!`).
+
+### Fixed
+- Added UTF-8 decode error handling in `WebServer` for malformed requests.
+
 ## [1.1.0] - 2026-01-07
 
 ### Added
