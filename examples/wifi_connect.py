@@ -83,6 +83,51 @@ async def custom_config_example():
     print(f"Connected! IP: {wm.get_config()[0]}")
 
 
+# --- Example 4: Display AP Config on External Screen ---
+async def display_ap_example():
+    """
+    Example for showing AP credentials on OLED/LCD display.
+    Useful for devices with screens to show setup instructions.
+    """
+    print("--- Picore-W Display AP Example ---")
+
+    wm = WiFiManager(
+        ap_ssid="MyDevice",
+        ap_password="Setup1234"
+    )
+
+    def on_ap_started(ssid):
+        # Get AP config for display
+        ap_ssid, ap_password, ap_ip = wm.get_ap_config()
+
+        # Example: Print to console (replace with your display code)
+        print("=" * 30)
+        print("WiFi Setup Mode")
+        print(f"SSID: {ap_ssid}")
+        print(f"Pass: {ap_password}")
+        print(f"URL:  http://{ap_ip}")
+        print("=" * 30)
+
+        # For OLED/LCD display:
+        # display.fill(0)
+        # display.text(f"SSID:{ap_ssid}", 0, 0)
+        # display.text(f"Pass:{ap_password}", 0, 16)
+        # display.show()
+
+    def on_connected(ip):
+        print(f"Connected! IP: {ip}")
+        # display.fill(0)
+        # display.text(f"IP:{ip}", 0, 0)
+        # display.show()
+
+    wm.on("ap_mode_started", on_ap_started)
+    wm.on("connected", on_connected)
+
+    # Keep running
+    while True:
+        await asyncio.sleep(10)
+
+
 # --- Main Entry Point ---
 async def main():
     """Run the basic example by default."""

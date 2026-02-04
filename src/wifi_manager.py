@@ -301,6 +301,24 @@ class WiFiManager:
         """Get current IP configuration (ip, subnet, gateway, dns)."""
         return self.wlan.ifconfig()
 
+    def get_ap_config(self) -> tuple:
+        """
+        Get AP mode configuration for external display.
+
+        Returns:
+            tuple: (ssid, password, ip) for display on screens/LEDs.
+
+        Example:
+            ssid, password, ip = wm.get_ap_config()
+            display.show(f"SSID: {ssid}")
+            display.show(f"Pass: {password}")
+        """
+        return (self._config.ap_ssid, self._config.ap_password, self._config.ap_ip)
+
+    def is_ap_mode(self) -> bool:
+        """Check if currently in AP provisioning mode."""
+        return self._state == STATE_AP_MODE
+
     def on(self, event: str, callback) -> None:
         """
         Register a callback for an event.

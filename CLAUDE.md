@@ -107,6 +107,20 @@ Available events:
 - `ap_mode_started(ap_ssid)` - AP mode activated
 - `connection_failed(retry_count)` - Entered FAIL state
 
+### Display Integration
+
+Retrieve AP credentials for external displays (OLED, LCD):
+
+```python
+# Get AP config for display
+ssid, password, ip = wm.get_ap_config()
+
+# Check if in AP mode
+if wm.is_ap_mode():
+    display.text(f"SSID: {ssid}", 0, 0)
+    display.text(f"Pass: {password}", 0, 16)
+```
+
 ### Runtime Configuration
 
 `WiFiManager` accepts configuration parameters at construction:

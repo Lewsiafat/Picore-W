@@ -128,6 +128,27 @@ Register callbacks for state transitions:
 - **Retries**: The system attempts to connect multiple times (configurable via constructor) before entering a temporary `FAIL` cooldown.
 - **AP Fallback**: If no valid credentials exist, the system safely enters `AP_MODE`.
 
+### Display Integration
+
+Retrieve AP credentials for external displays (OLED, LCD, etc.):
+
+```python
+def on_ap_started(ssid):
+    # Get AP config for display
+    ap_ssid, ap_password, ap_ip = wm.get_ap_config()
+
+    # Show on OLED/LCD
+    display.text(f"SSID: {ap_ssid}", 0, 0)
+    display.text(f"Pass: {ap_password}", 0, 16)
+    display.show()
+
+wm.on("ap_mode_started", on_ap_started)
+
+# Check if currently in AP mode
+if wm.is_ap_mode():
+    ssid, password, ip = wm.get_ap_config()
+```
+
 ---
 
 ## Returning to Provisioning (AP) Mode

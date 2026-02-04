@@ -128,6 +128,27 @@ name = WiFiState.get_name(wm.get_status())  # "CONNECTED"
 - **重試機制**：系統會嘗試多次連線（可透過構造函數設定），若持續失敗則進入 `FAIL` 冷卻期。
 - **AP 備援**：若無有效憑證，系統會安全地進入 `AP_MODE` 等待使用者輸入。
 
+### 外部顯示器整合
+
+取得 AP 憑證以顯示在外部螢幕（OLED、LCD 等）：
+
+```python
+def on_ap_started(ssid):
+    # 取得 AP 配置用於顯示
+    ap_ssid, ap_password, ap_ip = wm.get_ap_config()
+
+    # 顯示在 OLED/LCD 上
+    display.text(f"SSID: {ap_ssid}", 0, 0)
+    display.text(f"Pass: {ap_password}", 0, 16)
+    display.show()
+
+wm.on("ap_mode_started", on_ap_started)
+
+# 檢查是否處於 AP 模式
+if wm.is_ap_mode():
+    ssid, password, ip = wm.get_ap_config()
+```
+
 ---
 
 ## 回到配網 (AP) 模式

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-02-04
+
+### Added
+- `WiFiManager.get_ap_config()` returns `(ssid, password, ip)` tuple for external display integration.
+- `WiFiManager.is_ap_mode()` convenience method to check if in AP provisioning mode.
+- Example 4 in `examples/wifi_connect.py` demonstrating OLED/LCD display integration.
+
 ## [1.3.0] - 2026-02-04
 
 ### Added
