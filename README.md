@@ -6,6 +6,8 @@ Picore-W is a robust infrastructure library for **Raspberry Pi Pico 2 W (RP2350)
 
 - **Asynchronous State Machine**: Manages WiFi lifecycle (Connect, Disconnect, Reconnect, Error Handling) using `uasyncio`.
 - **Smart Provisioning**: Automatically launches an Access Point (AP) with a web interface when no credentials are found.
+- **Event-Driven API**: Register callbacks for connection events (`connected`, `disconnected`, `state_change`).
+- **Runtime Configuration**: Customize timeouts, retries, and AP settings without modifying source code.
 - **Non-Blocking Design**: Engineered to run background network management without stalling your main application logic.
 - **Auto-Recovery**: Detects network drops and restores connectivity automatically.
 
@@ -29,15 +31,15 @@ async def main():
     # 1. Initialize WiFiManager
     # Starts background connection logic or provisioning mode automatically
     wm = WiFiManager()
-    
+
     print("Waiting for WiFi...")
-    
+
     # 2. Wait until connected
     while not wm.is_connected():
         await asyncio.sleep(1)
-        
+
     print(f"Connected! IP: {wm.get_config()[0]}")
-    
+
     # 3. Your application logic
     while True:
         await asyncio.sleep(10)
@@ -46,24 +48,85 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+### 3. Event-Driven Example
+Use callbacks instead of polling for a cleaner architecture:
+
+```python
+import uasyncio as asyncio
+from wifi_manager import WiFiManager
+
+async def main():
+    connected = asyncio.Event()
+
+    def on_connected(ip):
+        print(f"Connected! IP: {ip}")
+        connected.set()
+
+    def on_disconnected():
+        print("WiFi lost!")
+        connected.clear()
+
+    wm = WiFiManager()
+    wm.on("connected", on_connected)
+    wm.on("disconnected", on_disconnected)
+
+    await connected.wait()  # No polling needed
+
+    # Your application logic here
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### 4. Custom Configuration
+Override default settings at runtime:
+
+```python
+wm = WiFiManager(
+    max_retries=10,           # Connection attempts before fail
+    connect_timeout=20,       # Seconds per attempt
+    ap_ssid="MyDevice-Setup", # Custom AP name
+    ap_password="SecurePass123!"
+)
+```
+
 ---
 
 ## Lifecycle Management (State Machine)
 
-Picore-W uses an internal state machine to track network status. You can access the current state using `wm.get_status()`.
+Picore-W uses an internal state machine to track network status. You can access the current state using `wm.get_status()` or `wm.get_status_name()`.
 
-| State Constant | Value | Description |
+| State | Value | Description |
 | :--- | :--- | :--- |
-| `STATE_IDLE` | 0 | Initial state or waiting for command. |
-| `STATE_CONNECTING` | 1 | Attempting to join a WiFi network. |
-| `STATE_CONNECTED` | 2 | Successfully connected with assigned IP. |
-| `STATE_FAIL` | 3 | Connection failed. The system will cool down and retry. |
-| `STATE_AP_MODE` | 4 | Provisioning mode active (Hotspot mode). |
+| `WiFiState.IDLE` | 0 | Initial state or waiting for command. |
+| `WiFiState.CONNECTING` | 1 | Attempting to join a WiFi network. |
+| `WiFiState.CONNECTED` | 2 | Successfully connected with assigned IP. |
+| `WiFiState.FAIL` | 3 | Connection failed. The system will cool down and retry. |
+| `WiFiState.AP_MODE` | 4 | Provisioning mode active (Hotspot mode). |
+
+```python
+from constants import WiFiState
+
+# Get state name programmatically
+name = WiFiState.get_name(wm.get_status())  # "CONNECTED"
+```
+
+### Events
+
+Register callbacks for state transitions:
+
+| Event | Arguments | Description |
+| :--- | :--- | :--- |
+| `connected` | `(ip_address)` | WiFi connection established. |
+| `disconnected` | None | WiFi connection lost. |
+| `state_change` | `(old_state, new_state)` | Any state transition. |
+| `ap_mode_started` | `(ap_ssid)` | AP provisioning mode activated. |
+| `connection_failed` | `(retry_count)` | Entered FAIL state after max retries. |
 
 ### Error Handling & Auto-Recovery
-- **Connection Lost**: If the network drops while in `STATE_CONNECTED`, the manager will automatically transition back to `STATE_CONNECTING`.
-- **Retries**: The system attempts to connect multiple times (configured in `config.py`) before entering a temporary `STATE_FAIL` cooldown.
-- **AP Fallback**: If no valid credentials exist, the system safely enters `STATE_AP_MODE`.
+- **Connection Lost**: If the network drops while in `CONNECTED`, the manager will automatically transition back to `CONNECTING`.
+- **Retries**: The system attempts to connect multiple times (configurable via constructor) before entering a temporary `FAIL` cooldown.
+- **AP Fallback**: If no valid credentials exist, the system safely enters `AP_MODE`.
 
 ---
 
@@ -101,10 +164,12 @@ If you encounter issues during connection or provisioning:
 
 ## Architecture & Files
 
-- **`wifi_manager.py`**: The core business logic and state machine.
-- **`config.py`**: Default settings (Timeouts, Max Retries, AP SSID).
-- **`constants.py`**: Shared state definitions.
-- **`config_manager.py`**: Handles JSON persistence.
+- **`wifi_manager.py`**: The core business logic, state machine, and event system.
+- **`config.py`**: Default settings (Timeouts, Max Retries, AP SSID). Supports runtime overrides.
+- **`constants.py`**: `WiFiState` class with state definitions and utility methods.
+- **`config_manager.py`**: Handles versioned JSON persistence with automatic migration.
+- **`logger.py`**: Lightweight logging with global and per-module level control.
+- **`provisioning.py`**: Web-based WiFi provisioning handler.
 - **`templates/`**: HTML files for the web interface.
 
 ---

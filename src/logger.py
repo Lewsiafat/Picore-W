@@ -15,7 +15,7 @@ class LogLevel:
 
 class Logger:
     """
-    Simple logger with configurable level.
+    Simple logger with configurable global and per-module levels.
 
     Usage:
         from logger import Logger, LogLevel
@@ -26,12 +26,17 @@ class Logger:
 
         # Change global level
         Logger.set_level(LogLevel.DEBUG)
+
+        # Set module-specific level (overrides global)
+        Logger.set_module_level("WiFiManager", LogLevel.DEBUG)
+        Logger.set_module_level("WebServer", LogLevel.ERROR)
     """
 
-    _level = LogLevel.INFO  # Default level
+    _level = LogLevel.INFO  # Default global level
+    _module_levels = {}  # Module-specific levels: {module_name: level}
     _level_names = ['DEBUG', 'INFO', 'WARN', 'ERROR']
 
-    def __init__(self, module_name):
+    def __init__(self, module_name: str):
         """
         Create a logger for a specific module.
 
@@ -41,7 +46,7 @@ class Logger:
         self._module = module_name
 
     @classmethod
-    def set_level(cls, level):
+    def set_level(cls, level: int) -> None:
         """
         Set the global logging level.
 
@@ -51,28 +56,66 @@ class Logger:
         cls._level = level
 
     @classmethod
-    def get_level(cls):
+    def get_level(cls) -> int:
         """Get the current global logging level."""
         return cls._level
 
-    def _log(self, level, msg):
+    @classmethod
+    def set_module_level(cls, module_name: str, level: int) -> None:
+        """
+        Set logging level for a specific module.
+
+        Module-level settings override the global level for that module.
+
+        Args:
+            module_name: Name of the module (as passed to Logger constructor).
+            level: LogLevel constant. Use None to remove module-specific level.
+        """
+        if level is None:
+            cls._module_levels.pop(module_name, None)
+        else:
+            cls._module_levels[module_name] = level
+
+    @classmethod
+    def get_module_level(cls, module_name: str) -> int:
+        """
+        Get the effective logging level for a module.
+
+        Args:
+            module_name: Name of the module.
+
+        Returns:
+            Module-specific level if set, otherwise global level.
+        """
+        return cls._module_levels.get(module_name, cls._level)
+
+    @classmethod
+    def clear_module_levels(cls) -> None:
+        """Remove all module-specific level settings."""
+        cls._module_levels.clear()
+
+    def _get_effective_level(self) -> int:
+        """Get the effective level for this logger instance."""
+        return Logger._module_levels.get(self._module, Logger._level)
+
+    def _log(self, level: int, msg: str) -> None:
         """Internal logging method."""
-        if level >= Logger._level:
+        if level >= self._get_effective_level():
             prefix = Logger._level_names[level] if level < len(Logger._level_names) else '?'
             print(f"[{prefix}] {self._module}: {msg}")
 
-    def debug(self, msg):
+    def debug(self, msg: str) -> None:
         """Log a debug message (verbose, for development)."""
         self._log(LogLevel.DEBUG, msg)
 
-    def info(self, msg):
+    def info(self, msg: str) -> None:
         """Log an info message (normal operation)."""
         self._log(LogLevel.INFO, msg)
 
-    def warning(self, msg):
+    def warning(self, msg: str) -> None:
         """Log a warning message (potential issues)."""
         self._log(LogLevel.WARNING, msg)
 
-    def error(self, msg):
+    def error(self, msg: str) -> None:
         """Log an error message (failures)."""
         self._log(LogLevel.ERROR, msg)

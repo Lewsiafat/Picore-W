@@ -44,14 +44,14 @@ The WiFi lifecycle is managed through 5 states in `src/wifi_manager.py`:
 
 ### Key Files
 
-- `src/wifi_manager.py` - Core state machine and WiFi lifecycle management
+- `src/wifi_manager.py` - Core state machine, WiFi lifecycle, and event system
 - `src/provisioning.py` - Web-based WiFi provisioning handler (routes, templates, form processing)
-- `src/config_manager.py` - JSON persistence for WiFi credentials
+- `src/config_manager.py` - Versioned JSON persistence with automatic migration
 - `src/web_server.py` - Async HTTP server for provisioning UI
 - `src/dns_server.py` - Captive portal DNS server
-- `src/logger.py` - Lightweight logging system with configurable levels
-- `src/config.py` - Configuration constants (timeouts, retries, AP SSID)
-- `src/constants.py` - Shared state definitions
+- `src/logger.py` - Lightweight logging with global and per-module level control
+- `src/config.py` - Configuration class with runtime override support
+- `src/constants.py` - `WiFiState` class with state definitions and utilities
 
 ### Design Principles
 
@@ -76,6 +76,54 @@ log.error("Failure occurred")   # [ERROR] MyModule: ...
 # Change global log level
 Logger.set_level(LogLevel.DEBUG)  # Show all messages
 Logger.set_level(LogLevel.ERROR)  # Only show errors
+
+# Module-specific level (overrides global for that module)
+Logger.set_module_level("WiFiManager", LogLevel.DEBUG)
+Logger.set_module_level("WebServer", LogLevel.ERROR)
+```
+
+### Event System
+
+`WiFiManager` supports event-driven programming via callbacks:
+
+```python
+wm = WiFiManager()
+
+def on_connected(ip):
+    print(f"Connected: {ip}")
+
+def on_state_change(old, new):
+    print(f"State: {old} -> {new}")
+
+wm.on("connected", on_connected)
+wm.on("state_change", on_state_change)
+wm.off("connected", on_connected)  # Remove listener
+```
+
+Available events:
+- `connected(ip_address)` - WiFi connection established
+- `disconnected()` - WiFi connection lost
+- `state_change(old_state, new_state)` - Any state transition
+- `ap_mode_started(ap_ssid)` - AP mode activated
+- `connection_failed(retry_count)` - Entered FAIL state
+
+### Runtime Configuration
+
+`WiFiManager` accepts configuration parameters at construction:
+
+```python
+# Override specific settings
+wm = WiFiManager(
+    max_retries=10,
+    connect_timeout=20,
+    ap_ssid="MyDevice-Setup",
+    ap_password="SecurePass!"
+)
+
+# Or pass a WiFiConfig instance
+from config import WiFiConfig
+cfg = WiFiConfig(max_retries=10, ap_ssid="Custom")
+wm = WiFiManager(config=cfg)
 ```
 
 ### Dependency Injection
@@ -90,6 +138,33 @@ manager = WiFiManager()
 custom_dns = DNSServer("192.168.1.1")
 custom_web = WebServer()
 manager = WiFiManager(dns_server=custom_dns, web_server=custom_web)
+```
+
+### WiFiState Class
+
+State constants are available via the `WiFiState` class:
+
+```python
+from constants import WiFiState
+
+state = WiFiState.CONNECTED
+name = WiFiState.get_name(state)  # "CONNECTED"
+valid = WiFiState.is_valid(state)  # True
+all_states = WiFiState.all_states()  # [0, 1, 2, 3, 4]
+```
+
+### Config Versioning
+
+`ConfigManager` uses versioned config files for forward compatibility:
+
+```python
+from config_manager import ConfigManager
+
+# Get WiFi credentials (handles migration automatically)
+ssid, password = ConfigManager.get_wifi_credentials()
+
+# Check config version
+version = ConfigManager.get_version()  # Returns 2 for current format
 ```
 
 ## Project Guidelines

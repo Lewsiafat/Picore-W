@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-02-04
+
+### Added
+- **Event System:** `WiFiManager.on()` and `WiFiManager.off()` methods for event-driven programming.
+  - Events: `connected`, `disconnected`, `state_change`, `ap_mode_started`, `connection_failed`.
+- **Runtime Configuration:** `WiFiManager` constructor now accepts configuration parameters:
+  - `max_retries`, `connect_timeout`, `retry_delay`, `fail_recovery_delay`, `health_check_interval`
+  - `ap_ssid`, `ap_password`, `ap_ip`
+- **Module-Level Logging:** `Logger.set_module_level()` for per-module log level control.
+- **Config Versioning:** `ConfigManager` now tracks config file version for migration support.
+- `WiFiState` class in `constants.py` with `get_name()`, `is_valid()`, and `all_states()` methods.
+- `ConfigManager.get_wifi_credentials()` convenience method.
+- `ConfigManager.get_version()` to check config file version.
+
+### Changed
+- `WiFiConfig` class now supports instance creation with parameter overrides.
+- Config file format upgraded to version 2 with structured `wifi` section.
+- Legacy v1 configs are automatically migrated to v2 format on load.
+- Updated `examples/wifi_connect.py` with event-driven and custom config examples.
+
+### Deprecated
+- Direct use of `STATE_*` constants from `constants.py` (use `WiFiState.*` instead).
+
 ## [1.2.0] - 2026-02-03
 
 ### Added

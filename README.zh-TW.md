@@ -6,6 +6,8 @@ Picore-W 是一個為 **Raspberry Pi Pico 2 W (RP2350)** 與 **Raspberry Pi Pico
 
 - **非同步狀態機**：使用 `uasyncio` 管理 WiFi 完整生命週期（連線、斷線、重連、錯誤處理）。
 - **智慧配網模式 (Smart Provisioning)**：當未偵測到連線設定時，自動開啟 AP 模式並提供網頁界面。
+- **事件驅動 API**：註冊回調函式監聽連線事件（`connected`、`disconnected`、`state_change`）。
+- **運行時配置**：無需修改原始碼即可自訂超時、重試次數及 AP 設定。
 - **非阻塞設計**：確保網路管理在背景執行，不會阻塞您的主應用程式邏輯。
 - **自動恢復**：自動偵測網路斷線並嘗試恢復連線。
 
@@ -29,15 +31,15 @@ async def main():
     # 1. 初始化 WiFiManager
     # 自動啟動背景連線邏輯或配網模式
     wm = WiFiManager()
-    
+
     print("正在等待 WiFi 連線...")
-    
+
     # 2. 等待直到連線成功
     while not wm.is_connected():
         await asyncio.sleep(1)
-        
+
     print(f"已連線！IP 位址: {wm.get_config()[0]}")
-    
+
     # 3. 您的應用程式邏輯
     while True:
         await asyncio.sleep(10)
@@ -46,24 +48,85 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+### 3. 事件驅動範例
+使用回調函式取代輪詢，實現更簡潔的架構：
+
+```python
+import uasyncio as asyncio
+from wifi_manager import WiFiManager
+
+async def main():
+    connected = asyncio.Event()
+
+    def on_connected(ip):
+        print(f"已連線！IP: {ip}")
+        connected.set()
+
+    def on_disconnected():
+        print("WiFi 連線中斷！")
+        connected.clear()
+
+    wm = WiFiManager()
+    wm.on("connected", on_connected)
+    wm.on("disconnected", on_disconnected)
+
+    await connected.wait()  # 無需輪詢
+
+    # 您的應用程式邏輯
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### 4. 自訂配置
+在運行時覆蓋預設設定：
+
+```python
+wm = WiFiManager(
+    max_retries=10,           # 連線嘗試次數
+    connect_timeout=20,       # 每次嘗試的超時秒數
+    ap_ssid="MyDevice-Setup", # 自訂 AP 名稱
+    ap_password="SecurePass123!"
+)
+```
+
 ---
 
 ## 生命週期管理 (狀態機)
 
-Picore-W 使用內部狀態機來追蹤網路狀態。您可以透過 `wm.get_status()` 獲取目前狀態。
+Picore-W 使用內部狀態機來追蹤網路狀態。您可以透過 `wm.get_status()` 或 `wm.get_status_name()` 獲取目前狀態。
 
-| 狀態常數 | 數值 | 描述 |
+| 狀態 | 數值 | 描述 |
 | :--- | :--- | :--- |
-| `STATE_IDLE` | 0 | 初始狀態或等待指令。 |
-| `STATE_CONNECTING` | 1 | 正在嘗試加入 WiFi 網路。 |
-| `STATE_CONNECTED` | 2 | 連線成功並已取得 IP。 |
-| `STATE_FAIL` | 3 | 連線失敗。系統將進入冷卻期並重試。 |
-| `STATE_AP_MODE` | 4 | 配網模式已啟動（熱點模式）。 |
+| `WiFiState.IDLE` | 0 | 初始狀態或等待指令。 |
+| `WiFiState.CONNECTING` | 1 | 正在嘗試加入 WiFi 網路。 |
+| `WiFiState.CONNECTED` | 2 | 連線成功並已取得 IP。 |
+| `WiFiState.FAIL` | 3 | 連線失敗。系統將進入冷卻期並重試。 |
+| `WiFiState.AP_MODE` | 4 | 配網模式已啟動（熱點模式）。 |
+
+```python
+from constants import WiFiState
+
+# 程式化取得狀態名稱
+name = WiFiState.get_name(wm.get_status())  # "CONNECTED"
+```
+
+### 事件系統
+
+註冊回調函式監聽狀態變化：
+
+| 事件 | 參數 | 描述 |
+| :--- | :--- | :--- |
+| `connected` | `(ip_address)` | WiFi 連線建立。 |
+| `disconnected` | 無 | WiFi 連線中斷。 |
+| `state_change` | `(old_state, new_state)` | 任何狀態轉換。 |
+| `ap_mode_started` | `(ap_ssid)` | AP 配網模式已啟動。 |
+| `connection_failed` | `(retry_count)` | 達到最大重試次數，進入 FAIL 狀態。 |
 
 ### 錯誤處理與自動恢復
-- **連線中斷**：若在 `STATE_CONNECTED` 狀態下斷線，管理員會自動切換回 `STATE_CONNECTING` 嘗試恢復連線。
-- **重試機制**：系統會嘗試多次連線（於 `config.py` 中設定），若持續失敗則進入 `STATE_FAIL` 冷卻期。
-- **AP 備援**：若無有效憑證，系統會安全地進入 `STATE_AP_MODE` 等待使用者輸入。
+- **連線中斷**：若在 `CONNECTED` 狀態下斷線，管理員會自動切換回 `CONNECTING` 嘗試恢復連線。
+- **重試機制**：系統會嘗試多次連線（可透過構造函數設定），若持續失敗則進入 `FAIL` 冷卻期。
+- **AP 備援**：若無有效憑證，系統會安全地進入 `AP_MODE` 等待使用者輸入。
 
 ---
 
@@ -101,10 +164,12 @@ machine.reset()
 
 ## 架構與檔案說明
 
-- **`wifi_manager.py`**：核心業務邏輯與狀態機。
-- **`config.py`**：預設設定（超時、重試次數、AP 名稱）。修改此檔案進行基礎客製化。
-- **`constants.py`**：共用的狀態定義。
-- **`config_manager.py`**：處理 JSON 設定的持久化讀寫。
+- **`wifi_manager.py`**：核心業務邏輯、狀態機與事件系統。
+- **`config.py`**：預設設定（超時、重試次數、AP 名稱）。支援運行時覆蓋。
+- **`constants.py`**：`WiFiState` 類別，包含狀態定義與工具方法。
+- **`config_manager.py`**：處理版本化 JSON 設定的持久化讀寫，支援自動遷移。
+- **`logger.py`**：輕量級日誌系統，支援全局與模組級別控制。
+- **`provisioning.py`**：網頁式 WiFi 配網處理器。
 - **`templates/`**：配網網頁界面的 HTML 檔案。
 
 ---

@@ -10,6 +10,7 @@ from dns_server import DNSServer
 from web_server import WebServer
 from provisioning import ProvisioningHandler
 from constants import (
+    WiFiState,
     STATE_IDLE, STATE_CONNECTING, STATE_CONNECTED, STATE_FAIL, STATE_AP_MODE
 )
 from config import WiFiConfig
@@ -18,15 +19,6 @@ from logger import Logger
 # AP activation timeout (in 100ms ticks)
 AP_ACTIVATION_TIMEOUT = 50  # 5 seconds
 
-# State name mapping for logging
-_STATE_NAMES = {
-    STATE_IDLE: 'IDLE',
-    STATE_CONNECTING: 'CONNECTING',
-    STATE_CONNECTED: 'CONNECTED',
-    STATE_FAIL: 'FAIL',
-    STATE_AP_MODE: 'AP_MODE'
-}
-
 
 class WiFiManager:
     """
@@ -34,15 +26,52 @@ class WiFiManager:
     Handles connection lifecycles, retries, and web-based provisioning.
     """
 
-    def __init__(self, dns_server: DNSServer = None, web_server: WebServer = None):
+    def __init__(
+        self,
+        dns_server: DNSServer = None,
+        web_server: WebServer = None,
+        config: WiFiConfig = None,
+        max_retries: int = None,
+        connect_timeout: int = None,
+        retry_delay: int = None,
+        fail_recovery_delay: int = None,
+        health_check_interval: int = None,
+        ap_ssid: str = None,
+        ap_password: str = None,
+        ap_ip: str = None
+    ):
         """
         Initialize the WiFi manager.
 
         Args:
             dns_server: Optional DNSServer instance (created if None).
             web_server: Optional WebServer instance (created if None).
+            config: Optional WiFiConfig instance for all settings.
+            max_retries: Override max connection retries (default 5).
+            connect_timeout: Override connection timeout in seconds (default 15).
+            retry_delay: Override delay between retries in seconds (default 2).
+            fail_recovery_delay: Override recovery delay in seconds (default 30).
+            health_check_interval: Override health check interval (default 2).
+            ap_ssid: Override AP mode SSID (default "Picore-W-Setup").
+            ap_password: Override AP mode password.
+            ap_ip: Override AP mode IP address (default "192.168.4.1").
         """
         self._log = Logger("WiFiManager")
+
+        # Build configuration: passed config instance or create from parameters
+        if config is not None:
+            self._config = config
+        else:
+            self._config = WiFiConfig(
+                max_retries=max_retries,
+                connect_timeout=connect_timeout,
+                retry_delay=retry_delay,
+                fail_recovery_delay=fail_recovery_delay,
+                health_check_interval=health_check_interval,
+                ap_ssid=ap_ssid,
+                ap_password=ap_password,
+                ap_ip=ap_ip
+            )
 
         # Station interface for connecting to existing networks
         self.wlan = network.WLAN(network.STA_IF)
@@ -53,7 +82,7 @@ class WiFiManager:
         self.ap.active(False)
 
         # Network services (dependency injection)
-        self.dns_server = dns_server if dns_server else DNSServer(WiFiConfig.AP_IP)
+        self.dns_server = dns_server if dns_server else DNSServer(self._config.ap_ip)
         self.web_server = web_server if web_server else WebServer()
 
         # Provisioning handler
@@ -65,21 +94,45 @@ class WiFiManager:
         self._target_password = None
         self._retry_count = 0
 
+        # Event listeners: event_name -> list of callbacks
+        self._listeners = {
+            'connected': [],
+            'disconnected': [],
+            'state_change': [],
+            'ap_mode_started': [],
+            'connection_failed': []
+        }
+
         # Keep reference to background task to prevent GC
         self._state_machine_task = asyncio.create_task(self._run_state_machine())
 
     def _set_state(self, new_state: int) -> None:
         """
-        Set the state machine state with logging.
+        Set the state machine state with logging and event emission.
 
         Args:
             new_state: The new state constant.
         """
         if self._state != new_state:
-            old_name = _STATE_NAMES.get(self._state, '?')
-            new_name = _STATE_NAMES.get(new_state, '?')
+            old_state = self._state
+            old_name = WiFiState.get_name(old_state)
+            new_name = WiFiState.get_name(new_state)
             self._log.info(f"State: {old_name} -> {new_name}")
             self._state = new_state
+
+            # Emit state_change event
+            self._emit('state_change', old_state, new_state)
+
+            # Emit specific state events
+            if new_state == STATE_CONNECTED:
+                ip = self.wlan.ifconfig()[0]
+                self._emit('connected', ip)
+            elif old_state == STATE_CONNECTED and new_state != STATE_CONNECTED:
+                self._emit('disconnected')
+            elif new_state == STATE_AP_MODE:
+                self._emit('ap_mode_started', self._config.ap_ssid)
+            elif new_state == STATE_FAIL:
+                self._emit('connection_failed', self._retry_count)
 
     async def _run_state_machine(self) -> None:
         """Main asynchronous loop for WiFi state transitions."""
@@ -104,10 +157,10 @@ class WiFiManager:
 
     def _load_and_connect(self) -> None:
         """Attempt to load credentials and start connection sequence."""
-        config = ConfigManager.load_config()
-        if config and "ssid" in config and "password" in config:
-            self._log.info(f"Found config for '{config['ssid']}'")
-            self.connect(config["ssid"], config["password"])
+        ssid, password = ConfigManager.get_wifi_credentials()
+        if ssid:
+            self._log.info(f"Found config for '{ssid}'")
+            self.connect(ssid, password)
         else:
             self._log.info("No config found, entering AP mode")
             self._set_state(STATE_AP_MODE)
@@ -123,11 +176,11 @@ class WiFiManager:
         """Manage connection attempts and retries."""
         self._stop_ap_services()
 
-        self._log.info(f"Connecting to '{self._target_ssid}' (attempt {self._retry_count + 1}/{WiFiConfig.MAX_RETRIES})")
+        self._log.info(f"Connecting to '{self._target_ssid}' (attempt {self._retry_count + 1}/{self._config.max_retries})")
         self.wlan.connect(self._target_ssid, self._target_password)
 
         start_time = time.time()
-        while (time.time() - start_time) < WiFiConfig.CONNECT_TIMEOUT:
+        while (time.time() - start_time) < self._config.connect_timeout:
             if self.wlan.isconnected():
                 ip = self.wlan.ifconfig()[0]
                 self._log.info(f"Connected! IP: {ip}")
@@ -143,12 +196,12 @@ class WiFiManager:
             await asyncio.sleep(0.5)
 
         self._retry_count += 1
-        if self._retry_count >= WiFiConfig.MAX_RETRIES:
+        if self._retry_count >= self._config.max_retries:
             self._log.warning("Max retries reached")
             self._set_state(STATE_FAIL)
         else:
             self.wlan.disconnect()
-            await asyncio.sleep(WiFiConfig.RETRY_DELAY)
+            await asyncio.sleep(self._config.retry_delay)
 
     async def _handle_connected(self) -> None:
         """Monitor connection health when connected."""
@@ -158,12 +211,12 @@ class WiFiManager:
             self._retry_count = 0
             self._set_state(STATE_CONNECTING)
         else:
-            await asyncio.sleep(WiFiConfig.HEALTH_CHECK_INTERVAL)
+            await asyncio.sleep(self._config.health_check_interval)
 
     async def _handle_fail(self) -> None:
         """Handle failure state with recovery delay, then enter AP mode."""
-        self._log.info(f"Cooldown {WiFiConfig.FAIL_RECOVERY_DELAY}s before AP mode")
-        for _ in range(WiFiConfig.FAIL_RECOVERY_DELAY):
+        self._log.info(f"Cooldown {self._config.fail_recovery_delay}s before AP mode")
+        for _ in range(self._config.fail_recovery_delay):
             if self._state != STATE_FAIL:
                 return
             await asyncio.sleep(1)
@@ -173,8 +226,8 @@ class WiFiManager:
     async def _handle_ap_mode(self) -> None:
         """Manage Access Point and related services."""
         if not self.ap.active():
-            self._log.info(f"Starting AP '{WiFiConfig.AP_SSID}'")
-            self.ap.config(essid=WiFiConfig.AP_SSID, password=WiFiConfig.AP_PASSWORD)
+            self._log.info(f"Starting AP '{self._config.ap_ssid}'")
+            self.ap.config(essid=self._config.ap_ssid, password=self._config.ap_password)
             self.ap.active(True)
 
             # Wait for AP activation with timeout
@@ -242,8 +295,65 @@ class WiFiManager:
 
     def get_status_name(self) -> str:
         """Get the current state name as string."""
-        return _STATE_NAMES.get(self._state, 'UNKNOWN')
+        return WiFiState.get_name(self._state)
 
     def get_config(self) -> tuple:
         """Get current IP configuration (ip, subnet, gateway, dns)."""
         return self.wlan.ifconfig()
+
+    def on(self, event: str, callback) -> None:
+        """
+        Register a callback for an event.
+
+        Events:
+            connected: Called with (ip_address) when WiFi connects.
+            disconnected: Called with no args when WiFi disconnects.
+            state_change: Called with (old_state, new_state) on any transition.
+            ap_mode_started: Called with (ap_ssid) when AP mode activates.
+            connection_failed: Called with (retry_count) when entering FAIL state.
+
+        Args:
+            event: Event name to listen for.
+            callback: Function to call when event occurs.
+
+        Raises:
+            ValueError: If event name is not recognized.
+        """
+        if event not in self._listeners:
+            raise ValueError(f"Unknown event: {event}. Valid events: {list(self._listeners.keys())}")
+        if callback not in self._listeners[event]:
+            self._listeners[event].append(callback)
+
+    def off(self, event: str, callback=None) -> None:
+        """
+        Remove a callback from an event.
+
+        Args:
+            event: Event name to remove callback from.
+            callback: Specific callback to remove. If None, removes all callbacks.
+
+        Raises:
+            ValueError: If event name is not recognized.
+        """
+        if event not in self._listeners:
+            raise ValueError(f"Unknown event: {event}. Valid events: {list(self._listeners.keys())}")
+        if callback is None:
+            self._listeners[event] = []
+        elif callback in self._listeners[event]:
+            self._listeners[event].remove(callback)
+
+    def _emit(self, event: str, *args) -> None:
+        """
+        Emit an event to all registered listeners.
+
+        Args:
+            event: Event name to emit.
+            *args: Arguments to pass to callbacks.
+        """
+        if event not in self._listeners:
+            return
+        for callback in self._listeners[event]:
+            try:
+                callback(*args)
+            except Exception as e:
+                self._log.error(f"Event callback error ({event}): {e}")
