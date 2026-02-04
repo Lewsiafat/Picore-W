@@ -20,7 +20,7 @@ This is a MicroPython project - no traditional build system exists. Code is depl
 
 ## Code Style
 
-Follow the Google Python Style Guide (see `conductor/code_styleguides/python.md`):
+Follow the Google Python Style Guide:
 - **Linting:** `pylint`
 - **Line length:** 80 characters max
 - **Indentation:** 4 spaces (never tabs)
@@ -169,24 +169,18 @@ version = ConfigManager.get_version()  # Returns 2 for current format
 
 ## Project Guidelines
 
-- **No testing in production code:** Test files are kept separate (per `product-guidelines.md`)
+- **No testing in production code:** Test files are kept separate
 - **Minimalist documentation:** Use clear naming; comments only for complex logic or hardware workarounds
 - **All source code in `src/`:** Maintain flat, intuitive directory structure
 
-## Workflow
+## Commit Message Format
 
-Tasks are tracked in `conductor/tracks/*/plan.md`. Follow the workflow in `conductor/workflow.md`:
-1. Mark tasks `[~]` when in progress, `[x]` when complete
-2. Append commit SHA to completed tasks
-3. Use git notes to attach task summaries to commits
-
-### Commit Message Format
 ```
 <type>(<scope>): <description>
 ```
 Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
-### Versioning
+## Versioning
 
 Semantic Versioning with manual `CHANGELOG.md` updates. Release tags use annotated format: `git tag -a vX.Y.Z -m "Release vX.Y.Z: [summary]"`
 
@@ -196,11 +190,4 @@ Semantic Versioning with manual `CHANGELOG.md` updates. Release tags use annotat
 src/                    # Library code (deployed to Pico)
   templates/            # HTML for provisioning UI
 examples/               # Integration examples
-conductor/              # Project management
-  workflow.md           # Development workflow
-  product.md            # Product overview
-  product-guidelines.md # Development principles
-  code_styleguides/     # Style guides
-  tracks/               # Active work tracks
-  archive/              # Completed tracks
 ```
