@@ -1,8 +1,0 @@
-{
-  "track_id": "versioning_setup_20260107",
-  "type": "chore",
-  "status": "new",
-  "created_at": "2026-01-07T12:00:00Z",
-  "updated_at": "2026-01-07T12:00:00Z",
-  "description": "Establish versioning, CHANGELOG, and release workflow"
-}
