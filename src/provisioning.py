@@ -87,17 +87,25 @@ class ProvisioningHandler:
         self._log.info("Received configure request")
         params = request.get("params", {})
         ssid = params.get("ssid", "").strip()
-        password = params.get("password", "")
+        password = params.get("password", "").strip()
 
         # Validate SSID (1-32 bytes, required)
         if not ssid or len(ssid) > 32:
             self._log.warning("Invalid SSID submitted")
             return b"HTTP/1.1 400 Bad Request\r\n\r\nInvalid SSID (must be 1-32 characters)"
 
-        # Validate Password (8-63 chars for WPA2, or empty for open network)
-        if password and (len(password) < 8 or len(password) > 63):
-            self._log.warning("Invalid password length")
-            return b"HTTP/1.1 400 Bad Request\r\n\r\nInvalid password (must be 8-63 characters or empty)"
+        # Validate Password (8-63 chars for WPA2, required)
+        if not password:
+            self._log.warning(
+                "Empty password received "
+                f"(params keys: {list(params.keys())})"
+            )
+            return b"HTTP/1.1 400 Bad Request\r\n\r\nPassword is required"
+        if len(password) < 8 or len(password) > 63:
+            self._log.warning(
+                f"Invalid password length: {len(password)}"
+            )
+            return b"HTTP/1.1 400 Bad Request\r\n\r\nInvalid password (must be 8-63 characters)"
 
         # Save configuration to flash
         success = ConfigManager.save_config(ssid, password)

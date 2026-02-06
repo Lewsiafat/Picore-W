@@ -96,7 +96,19 @@ class WebServer:
             # Read Body if it's a POST request
             body = ""
             if method == "POST" and content_length > 0:
-                body_bytes = await reader.read(content_length)
+                body_bytes = b""
+                remaining = content_length
+                while remaining > 0:
+                    chunk = await reader.read(remaining)
+                    if not chunk:
+                        break
+                    body_bytes += chunk
+                    remaining -= len(chunk)
+                if len(body_bytes) < content_length:
+                    self._log.warning(
+                        f"Incomplete body: got {len(body_bytes)}"
+                        f"/{content_length} bytes"
+                    )
                 try:
                     body = body_bytes.decode('utf-8')
                 except UnicodeError:

@@ -49,9 +49,11 @@ The WiFi lifecycle is managed through 5 states in `src/wifi_manager.py`:
 - `src/config_manager.py` - Versioned JSON persistence with automatic migration
 - `src/web_server.py` - Async HTTP server for provisioning UI
 - `src/dns_server.py` - Captive portal DNS server
-- `src/logger.py` - Lightweight logging with global and per-module level control
+- `src/logger.py` - Lightweight logging with global and per-module level control, hook system
 - `src/config.py` - Configuration class with runtime override support
 - `src/constants.py` - `WiFiState` class with state definitions and utilities
+- `src/debug_display.py` - Debug dashboard for Pico Explorer 2.8" display (4 pages, button navigation)
+- `src/main_debug.py` - Debug mode entry point (upload as `main.py` to device)
 
 ### Design Principles
 
@@ -80,6 +82,14 @@ Logger.set_level(LogLevel.ERROR)  # Only show errors
 # Module-specific level (overrides global for that module)
 Logger.set_module_level("WiFiManager", LogLevel.DEBUG)
 Logger.set_module_level("WebServer", LogLevel.ERROR)
+
+# Hook system - capture logs programmatically
+def my_hook(level, module, msg):
+    # level: int, module: str, msg: str
+    pass
+
+Logger.add_hook(my_hook)
+Logger.remove_hook(my_hook)
 ```
 
 ### Event System
@@ -120,6 +130,22 @@ if wm.is_ap_mode():
     display.text(f"SSID: {ssid}", 0, 0)
     display.text(f"Pass: {password}", 0, 16)
 ```
+
+### Debug Display (Pico Explorer)
+
+Hardware debug dashboard using 2.8" PicoGraphics display and 4 buttons. Requires Pimoroni MicroPython firmware with `picographics` module.
+
+**Pages** (navigate with A/B buttons):
+| Page | Content |
+|------|---------|
+| Status | WiFi state, IP, SSID, retry count, uptime |
+| Config | Saved SSID, password (masked), config version, file status |
+| Log | Last ~11 log entries, colour-coded by level |
+| Network | WLAN status, RSSI, AP mode info, manual AP reset (X button) |
+
+**Buttons:** A=prev page, B=next page, X=context action, Y=toggle log level (DEBUG/INFO)
+
+**Usage:** Upload `main_debug.py` as `main.py` to the device. If startup fails, error is shown on display and LED flashes.
 
 ### Runtime Configuration
 
@@ -203,5 +229,7 @@ Semantic Versioning with manual `CHANGELOG.md` updates. Release tags use annotat
 ```
 src/                    # Library code (deployed to Pico)
   templates/            # HTML for provisioning UI
+  debug_display.py      # Debug dashboard (requires Pico Explorer)
+  main_debug.py         # Debug entry point (rename to main.py for use)
 examples/               # Integration examples
 ```

@@ -115,10 +115,11 @@ class ConfigManager:
             time.sleep(0.1)
             with open(CONFIG_FILE, "r") as f:
                 saved = json.load(f)
-                if saved.get("version") == data.get("version"):
-                    return True
-                print("ConfigManager: Verification FAILED. Content mismatch.")
-                return False
+                if saved != data:
+                    print("ConfigManager: Verification FAILED."
+                          " Content mismatch.")
+                    return False
+                return True
         except OSError as e:
             print(f"ConfigManager: Error saving config: {e}")
             return False

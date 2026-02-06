@@ -35,6 +35,7 @@ class Logger:
     _level = LogLevel.INFO  # Default global level
     _module_levels = {}  # Module-specific levels: {module_name: level}
     _level_names = ['DEBUG', 'INFO', 'WARN', 'ERROR']
+    _hooks = []  # list of callable(level, module, msg)
 
     def __init__(self, module_name: str):
         """
@@ -94,6 +95,30 @@ class Logger:
         """Remove all module-specific level settings."""
         cls._module_levels.clear()
 
+    @classmethod
+    def add_hook(cls, hook) -> None:
+        """
+        Register a log hook callback.
+
+        Hook signature: hook(level: int, module: str, msg: str)
+
+        Args:
+            hook: Callable to receive log messages.
+        """
+        if hook not in cls._hooks:
+            cls._hooks.append(hook)
+
+    @classmethod
+    def remove_hook(cls, hook) -> None:
+        """
+        Remove a log hook callback.
+
+        Args:
+            hook: Previously registered hook to remove.
+        """
+        if hook in cls._hooks:
+            cls._hooks.remove(hook)
+
     def _get_effective_level(self) -> int:
         """Get the effective level for this logger instance."""
         return Logger._module_levels.get(self._module, Logger._level)
@@ -103,6 +128,11 @@ class Logger:
         if level >= self._get_effective_level():
             prefix = Logger._level_names[level] if level < len(Logger._level_names) else '?'
             print(f"[{prefix}] {self._module}: {msg}")
+            for hook in Logger._hooks:
+                try:
+                    hook(level, self._module, msg)
+                except Exception:
+                    pass
 
     def debug(self, msg: str) -> None:
         """Log a debug message (verbose, for development)."""

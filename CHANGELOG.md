@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-02-06
+
+### Added
+- **Debug Display Dashboard** (`src/debug_display.py`): Real-time hardware debugging tool for Pico Explorer 2.8" PicoGraphics display with 4 navigable pages:
+  - **Status** — WiFi state, IP, SSID, retry count, uptime, WLAN status code.
+  - **Config** — Raw `wifi_config.json` inspection: saved SSID, password (masked/reveal toggle), config version, file existence.
+  - **Log** — Scrolling log viewer (last 11 entries) with colour-coded levels.
+  - **Network** — WLAN status, RSSI, IP/Gateway, AP mode info, manual AP mode reset.
+- **Debug Entry Point** (`src/main_debug.py`): Standalone entry point with panic handler — displays startup errors on screen and flashes LED.
+- **Logger Hook System** (`src/logger.py`): `Logger.add_hook()` and `Logger.remove_hook()` allow external consumers to capture log messages programmatically.
+
+### Fixed
+- **WiFi password not saved (partial read):** `WebServer` POST body reading now uses a loop to handle chunked/partial TCP reads instead of a single `reader.read()` call.
+- **Config verification mismatch:** `ConfigManager._save_raw()` now compares full saved data (`saved != data`) instead of only checking version field.
+- **Empty password accepted:** `ProvisioningHandler` now rejects empty passwords and strips whitespace before validation.
+
 ## [1.3.1] - 2026-02-04
 
 ### Added

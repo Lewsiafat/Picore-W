@@ -23,13 +23,13 @@ async def monitor_status(wm):
             elif current_state == STATE_CONNECTED: state_name = "CONNECTED (Station)"
             elif current_state == STATE_FAIL: state_name = "FAIL"
             elif current_state == STATE_AP_MODE: state_name = "AP MODE (Provisioning)"
-            
+
             print(f"System: State -> {state_name}")
             last_state = current_state
-            
+
             if current_state == STATE_AP_MODE:
                 print("Action: Connect to 'Picore-W-Setup' to configure the device.")
-            
+
         await asyncio.sleep(1)
 
 async def main():
@@ -38,14 +38,14 @@ async def main():
     Initializes the WiFi manager and starts concurrent tasks.
     """
     print("--- Picore-W Initializing ---")
-    
+
     # Initialize the WiFi Manager (starts its background state machine)
     wm = WiFiManager()
-    
+
     # Launch concurrent system and application tasks
     asyncio.create_task(blink_led())
     asyncio.create_task(monitor_status(wm))
-    
+
     # Keep the event loop running
     while True:
         await asyncio.sleep(10)
