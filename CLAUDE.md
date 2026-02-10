@@ -52,6 +52,7 @@ The WiFi lifecycle is managed through 5 states in `src/wifi_manager.py`:
 - `src/logger.py` - Lightweight logging with global and per-module level control, hook system
 - `src/config.py` - Configuration class with runtime override support
 - `src/constants.py` - `WiFiState` class with state definitions and utilities
+- `src/main.py` - Standard entry point (no display, pure WiFi management)
 - `src/debug_display.py` - Debug dashboard for Pico Explorer 2.8" display (4 pages, button navigation)
 - `src/main_debug.py` - Debug mode entry point (upload as `main.py` to device)
 
@@ -131,19 +132,52 @@ if wm.is_ap_mode():
     display.text(f"Pass: {password}", 0, 16)
 ```
 
+### Debug Info API
+
+`WiFiManager.get_debug_info()` returns a snapshot dict of all debug data, with hardware access wrapped in try/except:
+
+```python
+info = wm.get_debug_info()
+# Returns: {
+#   "state": int, "target_ssid": str|None,
+#   "retry_count": int, "max_retries": int,
+#   "wlan_status": int|None, "wlan_rssi": int|None,
+#   "wlan_connected": bool, "wlan_ifconfig": tuple|None,
+#   "ap_active": bool, "ap_ssid": str,
+#   "ap_password": str, "ap_ip": str, "ap_ifconfig": tuple|None,
+# }
+```
+
 ### Debug Display (Pico Explorer)
 
 Hardware debug dashboard using 2.8" PicoGraphics display and 4 buttons. Requires Pimoroni MicroPython firmware with `picographics` module.
 
+`DebugDisplay` accepts a **data provider** callable (returning a dict) instead of a `WiFiManager` instance directly. This decouples the display from any specific data source.
+
+```python
+from debug_display import DebugDisplay
+
+# Using WiFiManager's built-in provider
+debug = DebugDisplay(wm.get_debug_info)
+
+# Or any callable returning the expected dict
+debug = DebugDisplay(my_custom_data_provider)
+
+# Enable/disable at runtime
+debug.disable()   # Stops rendering, clears screen
+debug.enable()    # Resumes rendering
+debug.is_enabled()  # Query state
+```
+
 **Pages** (navigate with A/B buttons):
 | Page | Content |
 |------|---------|
-| Status | WiFi state, IP, SSID, retry count, uptime |
+| Status | WiFi state, IP, SSID, retry count, uptime, WLAN status |
 | Config | Saved SSID, password (masked), config version, file status |
 | Log | Last ~11 log entries, colour-coded by level |
-| Network | WLAN status, RSSI, AP mode info, manual AP reset (X button) |
+| Network | WLAN status, RSSI, AP mode info |
 
-**Buttons:** A=prev page, B=next page, X=context action, Y=toggle log level (DEBUG/INFO)
+**Buttons:** A=prev page, B=next page, X=context action (Config: toggle password, Log: clear), Y=toggle log level (DEBUG/INFO)
 
 **Usage:** Upload `main_debug.py` as `main.py` to the device. If startup fails, error is shown on display and LED flashes.
 
@@ -229,7 +263,8 @@ Semantic Versioning with manual `CHANGELOG.md` updates. Release tags use annotat
 ```
 src/                    # Library code (deployed to Pico)
   templates/            # HTML for provisioning UI
-  debug_display.py      # Debug dashboard (requires Pico Explorer)
+  main.py               # Standard entry point (no display)
   main_debug.py         # Debug entry point (rename to main.py for use)
+  debug_display.py      # Debug dashboard (requires Pico Explorer)
 examples/               # Integration examples
 ```

@@ -319,6 +319,54 @@ class WiFiManager:
         """Check if currently in AP provisioning mode."""
         return self._state == STATE_AP_MODE
 
+    def get_debug_info(self) -> dict:
+        """
+        Get all debug information as a single snapshot dict.
+
+        Returns:
+            dict: Debug data for external display consumers.
+        """
+        info = {
+            "state": self._state,
+            "target_ssid": self._target_ssid,
+            "retry_count": self._retry_count,
+            "max_retries": self._config.max_retries,
+            "wlan_status": None,
+            "wlan_rssi": None,
+            "wlan_connected": False,
+            "wlan_ifconfig": None,
+            "ap_active": False,
+            "ap_ssid": self._config.ap_ssid,
+            "ap_password": self._config.ap_password,
+            "ap_ip": self._config.ap_ip,
+            "ap_ifconfig": None,
+        }
+        try:
+            info["wlan_status"] = self.wlan.status()
+        except Exception:
+            pass
+        try:
+            info["wlan_rssi"] = self.wlan.status('rssi')
+        except Exception:
+            pass
+        try:
+            info["wlan_connected"] = self.wlan.isconnected()
+        except Exception:
+            pass
+        try:
+            info["wlan_ifconfig"] = self.wlan.ifconfig()
+        except Exception:
+            pass
+        try:
+            info["ap_active"] = self.ap.active()
+        except Exception:
+            pass
+        try:
+            info["ap_ifconfig"] = self.ap.ifconfig()
+        except Exception:
+            pass
+        return info
+
     def on(self, event: str, callback) -> None:
         """
         Register a callback for an event.

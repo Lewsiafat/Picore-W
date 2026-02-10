@@ -185,12 +185,15 @@ If you encounter issues during connection or provisioning:
 
 ## Architecture & Files
 
+- **`main.py`**: Standard entry point — pure WiFi management without display dependencies.
+- **`main_debug.py`**: Debug entry point with hardware display dashboard (rename to `main.py` to use).
 - **`wifi_manager.py`**: The core business logic, state machine, and event system.
 - **`config.py`**: Default settings (Timeouts, Max Retries, AP SSID). Supports runtime overrides.
 - **`constants.py`**: `WiFiState` class with state definitions and utility methods.
 - **`config_manager.py`**: Handles versioned JSON persistence with automatic migration.
 - **`logger.py`**: Lightweight logging with global and per-module level control.
 - **`provisioning.py`**: Web-based WiFi provisioning handler.
+- **`debug_display.py`**: Debug dashboard for Pico Explorer 2.8" display (4 pages, button navigation).
 - **`templates/`**: HTML files for the web interface.
 
 ---

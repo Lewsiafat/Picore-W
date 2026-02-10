@@ -56,7 +56,7 @@ try:
         Logger.set_level(LogLevel.DEBUG)
 
         wm = WiFiManager()
-        debug = DebugDisplay(wm)
+        debug = DebugDisplay(wm.get_debug_info)
         asyncio.create_task(debug.run())
 
         # Keep main task alive

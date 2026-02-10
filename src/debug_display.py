@@ -47,14 +47,16 @@ class DebugDisplay:
     log level.
     """
 
-    def __init__(self, wifi_manager):
+    def __init__(self, data_provider):
         """
         Initialize the debug display.
 
         Args:
-            wifi_manager: WiFiManager instance to monitor.
+            data_provider: Callable returning a dict with debug data.
         """
-        self._wm = wifi_manager
+        self._get_data = data_provider
+        self._data = {}
+        self._enabled = True
         self._log = Logger("DebugDisplay")
 
         # Display setup
@@ -110,6 +112,23 @@ class DebugDisplay:
         if len(self._log_buf) > self._log_max:
             self._log_buf = self._log_buf[-self._log_max:]
 
+    def enable(self):
+        """Enable the display loop."""
+        self._enabled = True
+        self._log.info("Display enabled")
+
+    def disable(self):
+        """Disable the display loop and clear the screen."""
+        self._enabled = False
+        self._display.set_pen(self._bg)
+        self._display.clear()
+        self._display.update()
+        self._log.info("Display disabled")
+
+    def is_enabled(self) -> bool:
+        """Check if the display is enabled."""
+        return self._enabled
+
     def _read_buttons(self):
         """Read buttons with edge detection. Returns (a, b, x, y)."""
         vals = [
@@ -152,20 +171,11 @@ class DebugDisplay:
 
     def _handle_action(self):
         """Handle X button action based on current page."""
-        if self._page == PAGE_STATUS:
-            self._log.info("Reconnect requested")
-            self._wm._retry_count = 0
-            ssid, pw = ConfigManager.get_wifi_credentials()
-            if ssid:
-                self._wm.connect(ssid, pw)
-        elif self._page == PAGE_CONFIG:
+        if self._page == PAGE_CONFIG:
             self._show_password = not self._show_password
         elif self._page == PAGE_LOG:
             self._log_buf.clear()
             self._log.info("Log cleared")
-        elif self._page == PAGE_NETWORK:
-            self._log.info("Entering AP mode (manual)")
-            self._wm.enter_ap_mode()
 
     def _draw_header(self):
         """Draw the page header bar."""
@@ -199,7 +209,7 @@ class DebugDisplay:
     def _draw_status_page(self):
         """Draw the Status page."""
         y = CONTENT_Y
-        state = self._wm.get_status()
+        state = self._data.get("state", 0)
         state_name = WiFiState.get_name(state)
         colour = self._state_colours.get(state, self._fg)
 
@@ -208,22 +218,20 @@ class DebugDisplay:
 
         # IP address
         ip = "N/A"
-        if state == WiFiState.CONNECTED:
-            try:
-                ip = self._wm.wlan.ifconfig()[0]
-            except Exception:
-                ip = "Error"
+        ifcfg = self._data.get("wlan_ifconfig")
+        if state == WiFiState.CONNECTED and ifcfg:
+            ip = ifcfg[0]
         self._draw_label_value(y, "IP:", ip)
         y += LINE_H
 
         # Target SSID
-        ssid = self._wm._target_ssid or "N/A"
+        ssid = self._data.get("target_ssid") or "N/A"
         self._draw_label_value(y, "SSID:", ssid)
         y += LINE_H
 
         # Retry count
-        retry = self._wm._retry_count
-        max_r = self._wm._config.max_retries
+        retry = self._data.get("retry_count", 0)
+        max_r = self._data.get("max_retries", 0)
         self._draw_label_value(y, "Retries:", f"{retry}/{max_r}")
         y += LINE_H
 
@@ -235,16 +243,10 @@ class DebugDisplay:
         y += LINE_H
 
         # WLAN status code
-        try:
-            wlan_status = self._wm.wlan.status()
-        except Exception:
-            wlan_status = "?"
-        self._draw_label_value(y, "WLAN:", str(wlan_status))
-        y += LINE_H + 8
-
-        # Action hint
-        self._display.set_pen(self._dim)
-        self._display.text("[X] Reconnect", 4, y, scale=2)
+        wlan_status = self._data.get("wlan_status", "?")
+        self._draw_label_value(
+            y, "WLAN:", str(wlan_status) if wlan_status is not None else "?"
+        )
 
     def _draw_config_page(self):
         """Draw the Config page - shows saved config file."""
@@ -339,24 +341,21 @@ class DebugDisplay:
         y = CONTENT_Y
 
         # WLAN status code
-        try:
-            status = self._wm.wlan.status()
-        except Exception:
-            status = "?"
-        self._draw_label_value(y, "Status:", str(status))
+        wlan_status = self._data.get("wlan_status")
+        self._draw_label_value(
+            y, "Status:",
+            str(wlan_status) if wlan_status is not None else "?"
+        )
         y += LINE_H
 
         # RSSI
-        try:
-            rssi = self._wm.wlan.status('rssi')
-            rssi_str = f"{rssi} dBm"
-        except Exception:
-            rssi_str = "N/A"
+        rssi = self._data.get("wlan_rssi")
+        rssi_str = f"{rssi} dBm" if rssi is not None else "N/A"
         self._draw_label_value(y, "RSSI:", rssi_str)
         y += LINE_H
 
         # Connected?
-        connected = self._wm.wlan.isconnected()
+        connected = self._data.get("wlan_connected", False)
         conn_pen = self._green if connected else self._red
         self._draw_label_value(
             y, "Linked:", "Yes" if connected else "No", conn_pen
@@ -364,13 +363,13 @@ class DebugDisplay:
         y += LINE_H
 
         # ifconfig
-        try:
-            ifcfg = self._wm.wlan.ifconfig()
+        ifcfg = self._data.get("wlan_ifconfig")
+        if ifcfg:
             self._draw_label_value(y, "IP:", ifcfg[0])
             y += LINE_H
             self._draw_label_value(y, "GW:", ifcfg[2])
             y += LINE_H
-        except Exception:
+        else:
             self._draw_label_value(y, "IP:", "N/A")
             y += LINE_H
 
@@ -380,7 +379,7 @@ class DebugDisplay:
         self._display.text("-- AP Mode --", 4, y, scale=2)
         y += LINE_H
 
-        ap_active = self._wm.ap.active()
+        ap_active = self._data.get("ap_active", False)
         ap_pen = self._green if ap_active else self._dim
         self._draw_label_value(
             y, "Active:", "Yes" if ap_active else "No", ap_pen
@@ -388,23 +387,23 @@ class DebugDisplay:
         y += LINE_H
 
         if ap_active:
-            ap_ssid, ap_pw, ap_ip = self._wm.get_ap_config()
-            self._draw_label_value(y, "SSID:", ap_ssid)
+            self._draw_label_value(
+                y, "SSID:", self._data.get("ap_ssid", "")
+            )
             y += LINE_H
-            self._draw_label_value(y, "Pass:", ap_pw)
+            self._draw_label_value(
+                y, "Pass:", self._data.get("ap_password", "")
+            )
             y += LINE_H
-            try:
-                ap_ip_actual = self._wm.ap.ifconfig()[0]
-            except Exception:
-                ap_ip_actual = ap_ip
-            self._draw_label_value(y, "IP:", ap_ip_actual)
-
-        # Action hint
-        self._display.set_pen(self._dim)
-        self._display.text("[X] Reset to AP mode", 4, HEIGHT - LINE_H, scale=2)
+            ap_ifcfg = self._data.get("ap_ifconfig")
+            ap_ip = ap_ifcfg[0] if ap_ifcfg else self._data.get("ap_ip", "")
+            self._draw_label_value(y, "IP:", ap_ip)
 
     def _render(self):
         """Render the current page to the display."""
+        # Fetch data snapshot
+        self._data = self._get_data()
+
         # Clear
         self._display.set_pen(self._bg)
         self._display.clear()
@@ -435,6 +434,7 @@ class DebugDisplay:
         """Async main loop - update display every 200ms."""
         self._log.info("Display loop started")
         while True:
-            self._handle_buttons()
-            self._render()
+            if self._enabled:
+                self._handle_buttons()
+                self._render()
             await asyncio.sleep_ms(200)

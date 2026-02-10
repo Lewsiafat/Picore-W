@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-02-10
+
+### Added
+- **Debug Info API** (`WiFiManager.get_debug_info()`): Returns a snapshot dict of all debug data (WiFi state, SSID, retry count, WLAN status/RSSI, AP mode info) with hardware access wrapped in try/except.
+- **DebugDisplay enable/disable** (`enable()`, `disable()`, `is_enabled()`): Runtime control to start/stop display rendering and clear the screen.
+- **Standard entry point** (`src/main.py`): Clean main entry point without display dependencies, suitable as a base for user applications.
+
+### Changed
+- **DebugDisplay decoupled from WiFiManager**: Constructor now accepts a data provider callable (`get_debug_info`) instead of a `WiFiManager` instance directly. This allows any data source to drive the display.
+- **DebugDisplay action buttons simplified**: Removed reconnect (Status page) and reset-to-AP (Network page) actions from X button. X button now only toggles password visibility (Config page) and clears log (Log page).
+- **main_debug.py wiring updated**: Uses `DebugDisplay(wm.get_debug_info)` instead of `DebugDisplay(wm)`.
+
+### Removed
+- Direct WiFiManager dependency in `DebugDisplay` (replaced by data provider pattern).
+
 ## [1.4.0] - 2026-02-06
 
 ### Added

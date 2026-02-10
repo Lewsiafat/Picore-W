@@ -185,12 +185,15 @@ machine.reset()
 
 ## 架構與檔案說明
 
+- **`main.py`**：標準進入點 — 純 WiFi 管理，不含顯示器相依。
+- **`main_debug.py`**：除錯進入點，搭配硬體顯示器儀表板（重新命名為 `main.py` 即可使用）。
 - **`wifi_manager.py`**：核心業務邏輯、狀態機與事件系統。
 - **`config.py`**：預設設定（超時、重試次數、AP 名稱）。支援運行時覆蓋。
 - **`constants.py`**：`WiFiState` 類別，包含狀態定義與工具方法。
 - **`config_manager.py`**：處理版本化 JSON 設定的持久化讀寫，支援自動遷移。
 - **`logger.py`**：輕量級日誌系統，支援全局與模組級別控制。
 - **`provisioning.py`**：網頁式 WiFi 配網處理器。
+- **`debug_display.py`**：除錯儀表板，適用於 Pico Explorer 2.8" 顯示器（4 頁切換、按鈕導航）。
 - **`templates/`**：配網網頁界面的 HTML 檔案。
 
 ---
