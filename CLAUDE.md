@@ -45,7 +45,7 @@ The WiFi lifecycle is managed through 5 states in `src/wifi_manager.py`:
 ### Key Files
 
 - `src/wifi_manager.py` - Core state machine, WiFi lifecycle, and event system
-- `src/provisioning.py` - Web-based WiFi provisioning handler (routes, templates, form processing)
+- `src/provisioning.py` - Web-based WiFi provisioning handler (routes, templates, form processing, WiFi SSID scanning)
 - `src/config_manager.py` - Versioned JSON persistence with automatic migration
 - `src/web_server.py` - Async HTTP server for provisioning UI
 - `src/dns_server.py` - Captive portal DNS server

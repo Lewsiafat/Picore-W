@@ -5,7 +5,7 @@ Picore-W is a robust infrastructure library for **Raspberry Pi Pico 2 W (RP2350)
 ## Key Features
 
 - **Asynchronous State Machine**: Manages WiFi lifecycle (Connect, Disconnect, Reconnect, Error Handling) using `uasyncio`.
-- **Smart Provisioning**: Automatically launches an Access Point (AP) with a web interface when no credentials are found.
+- **Smart Provisioning**: Automatically launches an Access Point (AP) with a web interface when no credentials are found. Includes WiFi network scanning with signal strength display.
 - **Event-Driven API**: Register callbacks for connection events (`connected`, `disconnected`, `state_change`).
 - **Runtime Configuration**: Customize timeouts, retries, and AP settings without modifying source code.
 - **Non-Blocking Design**: Engineered to run background network management without stalling your main application logic.
@@ -192,7 +192,7 @@ If you encounter issues during connection or provisioning:
 - **`constants.py`**: `WiFiState` class with state definitions and utility methods.
 - **`config_manager.py`**: Handles versioned JSON persistence with automatic migration.
 - **`logger.py`**: Lightweight logging with global and per-module level control.
-- **`provisioning.py`**: Web-based WiFi provisioning handler.
+- **`provisioning.py`**: Web-based WiFi provisioning handler with WiFi SSID scanning (`/scan` API).
 - **`debug_display.py`**: Debug dashboard for Pico Explorer 2.8" display (4 pages, button navigation).
 - **`templates/`**: HTML files for the web interface.
 

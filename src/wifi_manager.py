@@ -86,7 +86,7 @@ class WiFiManager:
         self.web_server = web_server if web_server else WebServer()
 
         # Provisioning handler
-        self._provisioning = ProvisioningHandler(self.web_server)
+        self._provisioning = ProvisioningHandler(self.web_server, wlan=self.wlan)
 
         # Internal state
         self._state = STATE_IDLE
