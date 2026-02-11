@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-02-11
+
+### Added
+- **WiFi SSID Scan** (`/scan` API): New GET endpoint in provisioning web server that scans for nearby WiFi networks and returns JSON (SSID, RSSI, security type), deduplicated and sorted by signal strength.
+- **Scan UI in provisioning page**: "Scan WiFi" button with loading spinner, clickable SSID list with signal strength indicators, and click-to-fill form integration.
+- **`_build_json_response()` helper** in `ProvisioningHandler` for building JSON HTTP responses.
+
+### Changed
+- `ProvisioningHandler` now accepts an optional `wlan` (STA_IF) parameter for WiFi scanning capability.
+- `WiFiManager` passes `self.wlan` to `ProvisioningHandler` at construction.
+
 ## [1.5.0] - 2026-02-10
 
 ### Added

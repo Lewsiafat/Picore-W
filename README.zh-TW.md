@@ -5,7 +5,7 @@ Picore-W 是一個為 **Raspberry Pi Pico 2 W (RP2350)** 與 **Raspberry Pi Pico
 ## 核心特性
 
 - **非同步狀態機**：使用 `uasyncio` 管理 WiFi 完整生命週期（連線、斷線、重連、錯誤處理）。
-- **智慧配網模式 (Smart Provisioning)**：當未偵測到連線設定時，自動開啟 AP 模式並提供網頁界面。
+- **智慧配網模式 (Smart Provisioning)**：當未偵測到連線設定時，自動開啟 AP 模式並提供網頁界面。支援 WiFi 網路掃描與訊號強度顯示。
 - **事件驅動 API**：註冊回調函式監聽連線事件（`connected`、`disconnected`、`state_change`）。
 - **運行時配置**：無需修改原始碼即可自訂超時、重試次數及 AP 設定。
 - **非阻塞設計**：確保網路管理在背景執行，不會阻塞您的主應用程式邏輯。
@@ -192,7 +192,7 @@ machine.reset()
 - **`constants.py`**：`WiFiState` 類別，包含狀態定義與工具方法。
 - **`config_manager.py`**：處理版本化 JSON 設定的持久化讀寫，支援自動遷移。
 - **`logger.py`**：輕量級日誌系統，支援全局與模組級別控制。
-- **`provisioning.py`**：網頁式 WiFi 配網處理器。
+- **`provisioning.py`**：網頁式 WiFi 配網處理器，含 WiFi SSID 掃描功能（`/scan` API）。
 - **`debug_display.py`**：除錯儀表板，適用於 Pico Explorer 2.8" 顯示器（4 頁切換、按鈕導航）。
 - **`templates/`**：配網網頁界面的 HTML 檔案。
 
